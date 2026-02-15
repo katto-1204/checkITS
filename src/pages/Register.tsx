@@ -97,6 +97,11 @@ const Register = () => {
             return;
         }
 
+        if (!idNumber.startsWith("598")) {
+            setError("ID Number must start with '598'.");
+            return;
+        }
+
         setIsLoading(true);
         try {
             await registerWithEmail({
@@ -209,7 +214,7 @@ const Register = () => {
                             <Label htmlFor="idNumber">ID Number</Label>
                             <Input
                                 id="idNumber"
-                                placeholder="e.g. 2023-00123"
+                                placeholder="59800000"
                                 value={idNumber}
                                 onChange={(e) => setIdNumber(e.target.value)}
                                 className="bg-secondary border-border"

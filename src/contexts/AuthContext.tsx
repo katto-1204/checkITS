@@ -128,19 +128,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             if (!profile) {
                 await firebaseSignOut(auth);
-                toast.error("Account not found. Please create an account first.");
-                return;
+                // Throw specific error for UI to handle
+                throw new Error("NO_PROFILE");
             }
 
             setUserProfile(profile);
         } catch (error: any) {
             console.error("Sign-in error:", error);
-            if (error.code === "auth/user-not-found" || error.code === "auth/invalid-credential") {
+            if (error.message === "NO_PROFILE") {
+                throw error; // Propagate to caller
+            }
+
+            // If the user definitely doesn't exist (if detectable)
+            if (error.code === "auth/user-not-found") {
+                throw new Error("NO_ACCOUNT");
+            } else if (error.code === "auth/invalid-credential") {
                 toast.error("Invalid ID Number or password.");
             } else if (error.code === "auth/wrong-password") {
                 toast.error("Incorrect password.");
             } else if (error.code === "permission-denied" || error.message.includes("Missing or insufficient permissions")) {
-                toast.error("Database permission denied. Please check your Firestore Security Rules.");
+                toast.error("Database permission denied. Are you an admin?");
             } else {
                 toast.error("Sign-in failed. Please try again.");
             }

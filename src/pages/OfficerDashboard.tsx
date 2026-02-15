@@ -96,14 +96,33 @@ const OfficerDashboard = () => {
   // Calculate Status - Only consider meetings that strictly exist in the meetings array
   const validMeetingIds = new Set(meetings.map(m => m.id));
 
-  const presentCount = new Set(
-    attendance
-      .filter((a) => a.status === "present" && validMeetingIds.has(a.meetingId))
-      .map(a => a.meetingId)
-  ).size;
+  // Filter for PAST meetings only to calculate stats fairly
+  const now = new Date();
+  const pastMeetings = meetings.filter(m => {
+    // Combine date and time for precision, fallback to end of day if time missing
+    const dateTimeStr = m.time ? `${m.date}T${m.time}` : `${m.date}T23:59:00`;
+    return new Date(dateTimeStr) < now && validMeetingIds.has(m.id);
+  });
 
-  const totalEvents = meetings.length;
-  const attendanceRate = totalEvents > 0 ? Math.min(100, Math.round((presentCount / totalEvents) * 100)) : 0;
+  const totalPastEvents = pastMeetings.length;
+
+  // Count check-ins ONLY for past meetings
+  const presentInPastIds = new Set(
+    attendance
+      .filter((a) => a.status === "present" && pastMeetings.some(m => m.id === a.meetingId))
+      .map(a => a.meetingId)
+  );
+
+  const presentCountPast = presentInPastIds.size;
+
+  // Rate logic: If no past events have occurred, rate is 0 (as requested by user)
+  const attendanceRate = totalPastEvents > 0
+    ? Math.round((presentCountPast / totalPastEvents) * 100)
+    : 0;
+
+  // Missed logic: Total Past Events - Attended Past Events
+  // This ensures we don't count future events as "missed", avoiding confusion/negatives
+  const eventsMissed = Math.max(0, totalPastEvents - presentCountPast);
 
   // Calculate streak - sorting meetings descending
   const calculateStreak = () => {
@@ -124,6 +143,9 @@ const OfficerDashboard = () => {
     return streak;
   };
 
+  // Streak calculation (moved up or independent)
+  // ...
+
   // Combine meetings with attendance status
   const sortedEvents = meetings
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -135,6 +157,9 @@ const OfficerDashboard = () => {
         isPast: new Date(m.date) < new Date()
       };
     });
+
+  // Alias presentCountPast to presentCount for badges/compatibility
+  const presentCount = presentCountPast;
 
   // Handle scanning a meeting QR
   const handleScanMeetingQR = async (data: string) => {
@@ -204,11 +229,10 @@ const OfficerDashboard = () => {
   const stats = [
     { label: "Attendance Rate", value: `${attendanceRate}%`, icon: TrendingUp, color: "text-blue-500" },
     { label: "Active Streak", value: calculateStreak().toString(), icon: Flame, color: "text-orange-500" },
-    { label: "Events Missed", value: (totalEvents - presentCount).toString(), icon: XCircle, color: "text-red-500" },
+    { label: "Events Missed", value: eventsMissed.toString(), icon: XCircle, color: "text-red-500" },
   ];
 
   // Calendar logic
-  const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();

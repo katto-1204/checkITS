@@ -58,13 +58,16 @@ const DashboardLayout = ({ children, role: propRole }: DashboardLayoutProps) => 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Brand */}
-      <div className="p-6 border-b border-sidebar-border">
-        <h1 className="text-2xl font-black tracking-tight">
-          Check<span className="text-gradient">ITS</span>
-        </h1>
-        <p className="text-xs text-muted-foreground mt-1 uppercase tracking-widest">
-          {role}
-        </p>
+      <div className="p-6 border-b border-sidebar-border flex items-center gap-3">
+        <img src="/itslogo.png" alt="Logo" className="w-10 h-10 object-contain drop-shadow-md" />
+        <div>
+          <h1 className="text-2xl font-black tracking-tight leading-none">
+            Check<span className="text-gradient">ITS</span>
+          </h1>
+          <p className="text-xs text-muted-foreground uppercase tracking-widest leading-none mt-1">
+            {role}
+          </p>
+        </div>
       </div>
 
       {/* User Info */}
@@ -119,7 +122,7 @@ const DashboardLayout = ({ children, role: propRole }: DashboardLayoutProps) => 
           className="flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all w-full"
         >
           {theme === "dark" ? <Sparkles size={18} /> : <Moon size={18} />}
-          {theme === "dark" ? "Neon Mode" : "Dark Mode"}
+          {theme === "dark" ? "Light Mode " : "Dark Mode"}
         </button>
         <button
           onClick={handleSignOut}

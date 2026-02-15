@@ -3,8 +3,78 @@
 @tailwind utilities;
 
 @layer base {
-  :root,
+  :root {
+    /* Light Mode Variables (Default) */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+
+    --primary: 4 85% 50%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 4 85% 50%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+  }
+
+  /* Explicit Light Class (maps to root) */
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 4 85% 50%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 4 85% 50%;
+  }
+
   .dark {
+    /* Dark Mode Variables */
     --background: 0 0% 5%;
     --foreground: 0 0% 96%;
 
@@ -33,8 +103,6 @@
     --input: 0 0% 18%;
     --ring: 4 85% 50%;
 
-    --radius: 0.75rem;
-
     --sidebar-background: 0 0% 3%;
     --sidebar-foreground: 0 0% 85%;
     --sidebar-primary: 4 85% 50%;
@@ -43,57 +111,6 @@
     --sidebar-accent-foreground: 0 0% 96%;
     --sidebar-border: 0 0% 14%;
     --sidebar-ring: 4 85% 50%;
-
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-  }
-
-  .neon {
-    --background: 240 20% 3%;
-    --foreground: 0 0% 96%;
-
-    --card: 240 15% 7%;
-    --card-foreground: 0 0% 96%;
-
-    --popover: 240 15% 7%;
-    --popover-foreground: 0 0% 96%;
-
-    --primary: 0 100% 55%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 240 12% 12%;
-    --secondary-foreground: 0 0% 96%;
-
-    --muted: 240 12% 12%;
-    --muted-foreground: 240 5% 50%;
-
-    --accent: 240 12% 12%;
-    --accent-foreground: 0 0% 96%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 240 10% 16%;
-    --input: 240 10% 16%;
-    --ring: 0 100% 55%;
-
-    --radius: 0.75rem;
-
-    --sidebar-background: 240 20% 2%;
-    --sidebar-foreground: 240 5% 80%;
-    --sidebar-primary: 0 100% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 12% 8%;
-    --sidebar-accent-foreground: 0 0% 96%;
-    --sidebar-border: 240 10% 12%;
-    --sidebar-ring: 0 100% 55%;
-
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
   }
 }
 
@@ -126,18 +143,5 @@
 
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-[hsl(4,85%,50%)] to-[hsl(20,90%,55%)];
-  }
-
-  .neon .stat-glow {
-    box-shadow: 0 0 40px -5px hsl(var(--primary) / 0.4), 0 0 80px -20px hsl(var(--primary) / 0.2);
-  }
-
-  .neon .glass-card {
-    box-shadow: 0 0 15px -5px hsl(var(--primary) / 0.1);
-  }
-
-  .neon .text-gradient {
-    @apply from-[hsl(0,100%,55%)] to-[hsl(30,100%,55%)];
-    filter: drop-shadow(0 0 8px hsl(0, 100%, 55%, 0.5));
   }
 }

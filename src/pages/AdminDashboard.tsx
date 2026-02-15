@@ -391,7 +391,7 @@ const AdminDashboard = () => {
                           >
                             <div className="space-y-2">
                               <label className="text-sm font-medium">Officer ID Number</label>
-                              <Input name="idNumber" placeholder="e.g. 2023-00123" required />
+                              <Input name="idNumber" placeholder="e.g. 59800000" required />
                             </div>
                             <Button type="submit" className="w-full">Mark Present</Button>
                           </form>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { getUserByIdNumber } from "@/lib/firestore";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -32,9 +33,41 @@ const Login = () => {
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSigningIn(true);
-    await signInWithEmail(email, password);
-    setIsSigningIn(false);
+
+    try {
+      let loginEmail = email;
+
+      // Check if input looks like an email
+      if (!email.includes("@")) {
+        try {
+          // Attempt to find user by ID
+          // Note: This may fail if Firestore rules deny access to unauthenticated users
+          const user = await getUserByIdNumber(email);
+          if (user) {
+            loginEmail = user.email;
+          } else {
+            // ID not found in cleartext query, proceed to try auth with constructed email
+            console.warn("ID lookup returned empty, proceeding with constructed email");
+          }
+        } catch (idErr: any) {
+          console.warn("ID lookup failed or restricted:", idErr);
+          // If permission denied, we skip lookup and try direct login
+          // effectively assuming email = id@checkits.local
+        }
+      }
+
+      await signInWithEmail(loginEmail, password);
+    } catch (err: any) {
+      console.error("Login flow caught error:", err);
+      if (err.message === "NO_PROFILE" || err.message === "NO_ACCOUNT") {
+        setNoAccountOpen(true);
+      }
+    } finally {
+      setIsSigningIn(false);
+    }
   };
+
+  const [noAccountOpen, setNoAccountOpen] = useState(false);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -45,7 +78,15 @@ const Login = () => {
         className="w-full max-w-md"
       >
         {/* Logo / Brand */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-10 flex flex-col items-center">
+          <motion.img
+            src="/itslogo.png"
+            alt="ITS Logo"
+            className="w-24 h-24 mb-4 object-contain drop-shadow-lg"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0, duration: 0.4 }}
+          />
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -92,13 +133,13 @@ const Login = () => {
           {/* ID Number + Password Form */}
           <form onSubmit={handleEmailLogin} className="space-y-4 mb-5">
             <div className="space-y-2">
-              <Label htmlFor="email">{isAdminLogin ? "Username / Email" : "ID Number"}</Label>
+              <Label htmlFor="email">{isAdminLogin ? "Username / Email" : "ID Number / Email"}</Label>
               <Input
                 id="email"
                 type="text"
-                placeholder={isAdminLogin ? "admin" : "e.g. 2023-00123"}
+                placeholder={isAdminLogin ? "admin" : "59800000"}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value.trim())}
                 className="bg-secondary border-border"
                 required
               />
@@ -166,7 +207,7 @@ const Login = () => {
           </Button>
 
           <p className="text-xs text-muted-foreground text-center mt-4">
-            Log in with your **ID Number** or Google (@hcdc.edu.ph).
+            Log in with your ID Number or Google (@hcdc.edu.ph).
           </p>
 
           {/* Create Account Link */}
@@ -181,6 +222,33 @@ const Login = () => {
           </p>
         </motion.div>
       </motion.div>
+
+      {/* No Account Found Modal */}
+      {noAccountOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card w-full max-w-sm rounded-xl shadow-xl border p-6 text-center"
+          >
+            <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <EyeOff size={24} />
+            </div>
+            <h3 className="text-xl font-bold mb-2">No Account Found</h3>
+            <p className="text-muted-foreground text-sm mb-6">
+              Use your ID Number to create an account first.
+            </p>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setNoAccountOpen(false)}>
+                Cancel
+              </Button>
+              <Button className="flex-1" onClick={() => navigate("/register")}>
+                Create Account
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

@@ -100,6 +100,13 @@ export async function isFirstUser(): Promise<boolean> {
     return snap.empty;
 }
 
+export async function getUserByIdNumber(idNumber: string): Promise<UserProfile | null> {
+    const q = query(collection(db, "users"), where("idNumber", "==", idNumber));
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    return { uid: snap.docs[0].id, ...snap.docs[0].data() } as UserProfile;
+}
+
 // ─── Meetings ─────────────────────────────────────────────────────────────────
 
 export async function createMeeting(
