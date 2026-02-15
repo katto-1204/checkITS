@@ -197,6 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 toast.error("Registration failed. Please try again.");
                 console.error(error);
             }
+            throw error; // Re-throw so the form doesn't redirect
         }
     };
 

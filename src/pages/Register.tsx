@@ -214,9 +214,9 @@ const Register = () => {
                             <Label htmlFor="idNumber">ID Number</Label>
                             <Input
                                 id="idNumber"
-                                placeholder="59800000"
+                                placeholder="598000000"
                                 value={idNumber}
-                                onChange={(e) => setIdNumber(e.target.value)}
+                                onChange={(e) => setIdNumber(e.target.value.trim())}
                                 className="bg-secondary border-border"
                                 required
                             />

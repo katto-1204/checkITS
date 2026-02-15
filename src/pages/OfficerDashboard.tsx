@@ -420,8 +420,8 @@ const OfficerDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                  {["S", "M", "T", "W", "T", "F", "S"].map(d => (
-                    <span key={d} className="text-[10px] font-bold text-muted-foreground">{d}</span>
+                  {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+                    <span key={i} className="text-[10px] font-bold text-muted-foreground">{d}</span>
                   ))}
                 </div>
                 <div className="grid grid-cols-7 gap-1 text-center">

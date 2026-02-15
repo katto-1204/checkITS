@@ -59,9 +59,7 @@ const Login = () => {
       await signInWithEmail(loginEmail, password);
     } catch (err: any) {
       console.error("Login flow caught error:", err);
-      if (err.message === "NO_PROFILE" || err.message === "NO_ACCOUNT") {
-        setNoAccountOpen(true);
-      }
+      // Errors are now handled by toasts in AuthContext
     } finally {
       setIsSigningIn(false);
     }
