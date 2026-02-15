@@ -454,6 +454,9 @@ const AdminDashboard = () => {
                   <p className="text-sm font-bold font-mono tracking-widest">{scannedOfficer.idNumber || "NO ID"}</p>
                 </div>
                 <p className="text-sm text-muted-foreground uppercase tracking-widest font-bold mt-2">{scannedOfficer.position || "OFFICER"}</p>
+                {scannedOfficer.schoolYear && (
+                  <p className="text-xs text-muted-foreground font-medium">{scannedOfficer.schoolYear}</p>
+                )}
               </div>
 
               <Button onClick={handleConfirmAttendance} className="w-full h-12 text-lg font-bold mt-4" size="lg">

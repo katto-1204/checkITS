@@ -147,8 +147,11 @@ const OfficerDashboard = () => {
       const meeting = meetings.find((m) => m.id === meetingId);
       if (!meeting) {
         toast.error("Unknown meeting QR code.");
+        setScannerOpen(false); // Close scanner on error so user isn't stuck
         return;
       }
+
+      setScannerOpen(false); // Close scanner immediately upon success
 
       // Check if already registered
       const isRegistered = attendance.some(a => a.meetingId === meeting.id && a.status === "present");
@@ -156,12 +159,13 @@ const OfficerDashboard = () => {
         toast.info("You have already registered for this event.");
       }
 
+      // Open details modal to confirm
       loadMeetingDetails(meeting);
-      // We do NOT mark attendance here anymore. User must click "Mark as Attended" in the modal.
 
     } catch (err) {
       console.error(err);
       toast.error("Failed to process QR.");
+      setScannerOpen(false);
     }
   };
 
