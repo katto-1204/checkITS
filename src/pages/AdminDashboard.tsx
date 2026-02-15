@@ -114,12 +114,27 @@ const AdminDashboard = () => {
       }
 
       setScannedOfficer(officerProfile);
+
+      // Check if already present for this meeting
+      const existingAttendance = await getAttendanceForMeeting(scanMeetingId);
+      const isPresent = existingAttendance.some(a => a.userId === officerUid && a.status === "present");
+
+      if (isPresent) {
+        toast.info(`${officerProfile.displayName} is already marked present.`);
+        // We can still show the modal but maybe change the button, or just return.
+        // User requested: "it should say 'officer allraedy present'"
+        // If we return here, we can set scanner open again immediately
+        setScannerOpen(true);
+        return;
+      }
+
       setScannerOpen(false); // Close scanner
       setShowOfficerModal(true); // Open ID Card
 
     } catch (err) {
       console.error(err);
       toast.error("Failed to process QR.");
+      setScannerOpen(true); // Re-open on error
     }
   };
 

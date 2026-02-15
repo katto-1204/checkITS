@@ -93,9 +93,9 @@ const OfficerDashboard = () => {
     }
   };
 
-  const presentCount = attendance.filter((a) => a.status === "present").length;
+  const presentCount = new Set(attendance.filter((a) => a.status === "present").map(a => a.meetingId)).size;
   const totalEvents = meetings.length;
-  const attendanceRate = totalEvents > 0 ? Math.round((presentCount / totalEvents) * 100) : 0;
+  const attendanceRate = totalEvents > 0 ? Math.min(100, Math.round((presentCount / totalEvents) * 100)) : 0;
 
   // Calculate streak
   const calculateStreak = () => {

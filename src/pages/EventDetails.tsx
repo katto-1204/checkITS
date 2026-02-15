@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, CheckCircle2, XCircle, Clock, QrCode, FileDown, ScanLine } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Clock, QrCode, FileDown, ScanLine, Edit, UserX, AlertCircle } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import QRCode from "react-qr-code";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import QrScanner from "@/components/QrScanner";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -19,10 +20,9 @@ import {
   markAttendance,
   getUser,
   Meeting,
-  AttendanceRecord,
-  UserProfile,
 } from "@/lib/firestore";
 import { toast } from "sonner";
+import { OFFICERS_2025_2026 } from "@/lib/officers";
 
 const container = {
   hidden: { opacity: 0 },
@@ -38,9 +38,15 @@ const EventDetails = () => {
   const { id } = useParams();
   const { userProfile } = useAuth();
   const [meeting, setMeeting] = useState<Meeting | null>(null);
-  const [officers, setOfficers] = useState<(UserProfile & { attendanceStatus: boolean; attendanceTime: string | null })[]>([]);
+
+  // State for the Master List view
+  const [masterList, setMasterList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [scannerOpen, setScannerOpen] = useState(false);
+
+  // Timer state
+  const [elapsedTime, setElapsedTime] = useState<string>("00:00:00");
+  const [isStarted, setIsStarted] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -53,22 +59,41 @@ const EventDetails = () => {
 
       setMeeting(meetingData);
 
-      // Map officers with their attendance status
-      const officerUsers = allUsers.filter((u) => u.role === "officer");
-      const mapped = officerUsers.map((officer) => {
-        const record = attendanceData.find((a) => a.userId === officer.uid);
+      // Map Master List to Users and Attendance
+      const mapped = OFFICERS_2025_2026.map((def) => {
+        // 1. Find if they have an account (fuzzy match name)
+        const user = allUsers.find(u =>
+          u.displayName.toLowerCase().includes(def.name.toLowerCase()) ||
+          def.name.toLowerCase().includes(u.displayName.toLowerCase())
+        );
+
+        // 2. Find attendance
+        const record = user
+          ? attendanceData.find(a => a.userId === user.uid)
+          : attendanceData.find(a => a.userDisplayName.toLowerCase() === def.name.toLowerCase());
+
+        let status = "not_registered"; // Default: Has account but not checked in
+        if (!user) status = "no_account"; // No account
+        if (record) status = record.status; // Present or Absent
+
         return {
-          ...officer,
-          attendanceStatus: record?.status === "present",
-          attendanceTime: record?.markedAt
+          ...def,
+          userUid: user?.uid,
+          userPhoto: user?.photoURL,
+          idNumber: user?.idNumber,
+          status, // 'present', 'absent', 'not_registered', 'no_account'
+          recordId: record?.id,
+          checkInTime: record?.markedAt
             ? new Date(record.markedAt.seconds * 1000).toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" })
-            : null,
+            : null
         };
       });
-      setOfficers(mapped);
+
+      setMasterList(mapped);
+
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load meeting details.");
+      toast.error("Failed to load details.");
     } finally {
       setLoading(false);
     }
@@ -78,22 +103,30 @@ const EventDetails = () => {
     loadData();
   }, [loadData]);
 
-  const toggleAttendance = async (officer: typeof officers[0]) => {
-    if (!id || !userProfile) return;
-    try {
-      await markAttendance({
-        meetingId: id,
-        userId: officer.uid,
-        userDisplayName: officer.displayName,
-        status: officer.attendanceStatus ? "absent" : "present",
-        markedBy: userProfile.uid,
-      });
-      loadData();
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to update attendance.");
-    }
-  };
+  // Timer Logic
+  useEffect(() => {
+    if (!meeting) return;
+
+    const interval = setInterval(() => {
+      const start = new Date(`${meeting.date}T${meeting.time}`);
+      const now = new Date();
+      const diff = now.getTime() - start.getTime();
+
+      if (diff < 0) {
+        setElapsedTime("Not Started");
+        setIsStarted(false);
+      } else {
+        setIsStarted(true);
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        setElapsedTime(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [meeting]);
+
 
   const handleScanOfficerQR = async (data: string) => {
     if (!id || !userProfile) return;
@@ -104,6 +137,13 @@ const EventDetails = () => {
       const officerProfile = await getUser(officerUid);
       if (!officerProfile) {
         toast.error("Unknown officer QR code.");
+        return;
+      }
+
+      // Check if already present
+      const existing = masterList.find(o => o.userUid === officerUid);
+      if (existing && existing.status === "present") {
+        toast.info(`${officerProfile.displayName} is already marked present.`);
         return;
       }
 
@@ -123,7 +163,36 @@ const EventDetails = () => {
     }
   };
 
-  const presentCount = officers.filter((o) => o.attendanceStatus).length;
+  const handleMarkAbsent = async () => {
+    if (!id || !userProfile) return;
+    if (!confirm("Are you sure you want to mark all pending officers as ABSENT? This cannot be easily undone.")) return;
+
+    try {
+      setLoading(true);
+      const pendingOfficers = masterList.filter(o => o.status === "not_registered" && o.userUid);
+
+      const promises = pendingOfficers.map(o =>
+        markAttendance({
+          meetingId: id,
+          userId: o.userUid,
+          userDisplayName: o.name,
+          status: "absent",
+          markedBy: userProfile.uid,
+        })
+      );
+
+      await Promise.all(promises);
+      toast.success(`Marked ${promises.length} officers as absent.`);
+      loadData();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to batch mark absent.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const presentCount = masterList.filter((o) => o.status === "present").length;
 
   const exportEventPDF = () => {
     if (!meeting) return;
@@ -132,17 +201,17 @@ const EventDetails = () => {
     doc.text(`${meeting.title} — Attendance`, 14, 22);
     doc.setFontSize(10);
     doc.text(`${meeting.date} · ${meeting.time} · ${meeting.location}`, 14, 30);
-    doc.text(`Rate: ${officers.length > 0 ? Math.round((presentCount / officers.length) * 100) : 0}%`, 14, 36);
+    doc.text(`Rate: ${masterList.length > 0 ? Math.round((presentCount / masterList.length) * 100) : 0}%`, 14, 36);
 
     autoTable(doc, {
       startY: 44,
       head: [["#", "Officer", "ID Number", "Status", "Time"]],
-      body: officers.map((o, i) => [
+      body: masterList.map((o, i) => [
         (i + 1).toString(),
-        o.displayName,
+        o.name, // Use the name from master list def to be consistent
         o.idNumber || "—",
-        o.attendanceStatus ? "Present" : "Absent",
-        o.attendanceTime || "—",
+        o.status === "present" ? "Present" : o.status === "absent" ? "Absent" : "Pending",
+        o.checkInTime || "—",
       ]),
       theme: "grid",
       headStyles: { fillColor: [220, 38, 38] },
@@ -150,6 +219,9 @@ const EventDetails = () => {
 
     doc.save(`${meeting.title.toLowerCase().replace(/\s+/g, "-")}-attendance.pdf`);
   };
+
+  const pendingList = masterList.filter(o => o.status !== "present");
+  const presentList = masterList.filter(o => o.status === "present");
 
   if (loading) {
     return (
@@ -176,199 +248,184 @@ const EventDetails = () => {
 
   return (
     <DashboardLayout role="admin">
-      <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-        {/* Back + Title */}
-        <motion.div variants={item} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/admin")}>
-              <ArrowLeft size={20} />
-            </Button>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-black">{meeting.title}</h1>
-              <p className="text-sm text-muted-foreground">
-                {meeting.date} · {meeting.time} · {meeting.location}
-              </p>
+      <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 h-[calc(100vh-100px)] flex flex-col">
+
+        {/* Header Section */}
+        <motion.div variants={item} className="flex flex-col gap-4 bg-card border rounded-xl p-6 shadow-sm shrink-0">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+
+            {/* Timer & Basic Info */}
+            <div className="flex items-start gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="-ml-2">
+                <ArrowLeft size={24} />
+              </Button>
+              <div className="space-y-1">
+                <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-inconsolata font-bold tracking-widest ${isStarted ? "bg-red-500/10 text-red-600 animate-pulse" : "bg-secondary text-muted-foreground"}`}>
+                  <Clock size={16} className="mr-2" />
+                  {elapsedTime}
+                </div>
+                <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight leading-none text-primary">
+                  {meeting.title}
+                </h1>
+                <p className="text-lg text-muted-foreground font-medium flex flex-wrap gap-4">
+                  <span>{meeting.date}</span>
+                  <span className="opacity-30">•</span>
+                  <span>{meeting.time}</span>
+                  <span className="opacity-30">•</span>
+                  <span>{meeting.location}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Actions & QR */}
+            <div className="flex items-center gap-3">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button size="icon" variant="outline" className="w-12 h-12 rounded-xl">
+                    <QrCode size={24} />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-sm">
+                  <DialogHeader>
+                    <DialogTitle className="text-center font-bold">Event QR Code</DialogTitle>
+                  </DialogHeader>
+                  <div className="flex flex-col items-center p-4">
+                    <div className="bg-white p-4 rounded-xl shadow-lg">
+                      <QRCode value={`checkits://meeting/${id}/checkin`} size={250} />
+                    </div>
+                    <p className="mt-4 text-center text-sm text-muted-foreground">Officer Check-in</p>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Button variant="secondary" onClick={() => setScannerOpen(true)} className="h-12 px-6 font-bold text-base">
+                <ScanLine size={18} className="mr-2" />
+                Scan ID
+              </Button>
+
+              <Button variant="outline" onClick={exportEventPDF} className="h-12 w-12 p-0 rounded-xl">
+                <FileDown size={20} />
+              </Button>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="secondary" className="font-semibold">
-                  <QrCode size={16} className="mr-2" />
-                  QR Code
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-sm">
-                <DialogHeader>
-                  <DialogTitle className="font-bold">Meeting QR</DialogTitle>
-                </DialogHeader>
-                <div className="flex flex-col items-center gap-4 py-4">
-                  <div className="bg-white p-4 rounded-xl">
-                    <QRCode
-                      value={`checkits://meeting/${id}/checkin`}
-                      size={220}
-                    />
-                  </div>
-                  <p className="text-sm text-muted-foreground text-center">
-                    Officers scan this code to check in
-                  </p>
-                </div>
-              </DialogContent>
-            </Dialog>
-            <Button
-              variant="secondary"
-              className="font-semibold"
-              onClick={() => setScannerOpen(true)}
-            >
-              <ScanLine size={16} className="mr-2" />
-              Scan Officer
-            </Button>
+        </motion.div>
 
-            {/* Manual ID Check-in */}
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="secondary" className="font-semibold">
-                  <Edit size={16} className="mr-2" />
-                  Manual ID
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Manual Check-in</DialogTitle>
-                </DialogHeader>
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.currentTarget);
-                    const idNum = formData.get("idNumber") as string;
-                    if (!idNum) return;
+        {/* Content Split: Pending vs Present */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
 
-                    try {
-                      const allUsers = await getAllUsers();
-                      const officer = allUsers.find(u => u.idNumber === idNum);
-
-                      if (!officer) {
-                        toast.error("Officer with this ID not found.");
-                        return;
-                      }
-
-                      await markAttendance({
-                        meetingId: id!,
-                        userId: officer.uid,
-                        userDisplayName: officer.displayName,
-                        status: "present",
-                        markedBy: userProfile!.uid,
-                      });
-                      toast.success(`${officer.displayName} marked present.`);
-                      loadData();
-                      (e.target as HTMLFormElement).reset();
-                    } catch (err) {
-                      toast.error("Failed to mark attendance.");
-                    }
-                  }}
-                  className="space-y-4 pt-4"
+          {/* LEFT: Pending / Absent / No Account */}
+          <motion.div variants={item} className="flex flex-col gap-4 bg-muted/30 rounded-xl p-4 border min-h-0 overflow-hidden">
+            <div className="flex items-center justify-between shrink-0">
+              <h2 className="text-lg font-black uppercase text-muted-foreground flex items-center gap-2">
+                <UserX size={18} />
+                Expecting ({pendingList.length})
+              </h2>
+              {pendingList.length > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleMarkAbsent}
+                  className="text-xs font-bold"
                 >
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Officer ID Number</label>
-                    <Input name="idNumber" placeholder="e.g. 2023-00123" required />
+                  Mark All Absent
+                </Button>
+              )}
+            </div>
+
+            <div className="overflow-y-auto pr-2 space-y-2 flex-1">
+              {pendingList.map(officer => (
+                <div key={officer.name} className="flex items-center justify-between bg-card p-3 rounded-lg border shadow-sm opacity-80 hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-xs font-bold text-muted-foreground">
+                      {officer.name.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm leading-tight">{officer.name}</p>
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground">{officer.position}</p>
+                    </div>
                   </div>
-                  <Button type="submit" className="w-full">Mark Present</Button>
-                </form>
-              </DialogContent>
-            </Dialog>
-
-            <Button variant="secondary" onClick={exportEventPDF} className="font-semibold">
-              <FileDown size={16} className="mr-2" />
-              Export PDF
-            </Button>
-          </div>
-        </motion.div>
-
-        {/* Summary */}
-        <motion.div variants={item} className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <CheckCircle2 className="mx-auto mb-1 text-success" size={20} />
-              <p className="text-2xl font-black">{presentCount}</p>
-              <p className="text-xs text-muted-foreground">Present</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <XCircle className="mx-auto mb-1 text-destructive" size={20} />
-              <p className="text-2xl font-black">{officers.length - presentCount}</p>
-              <p className="text-xs text-muted-foreground">Absent</p>
-            </CardContent>
-          </Card>
-          <Card className="col-span-2 sm:col-span-1">
-            <CardContent className="p-4 text-center">
-              <Clock className="mx-auto mb-1 text-primary" size={20} />
-              <p className="text-2xl font-black">
-                {officers.length > 0 ? Math.round((presentCount / officers.length) * 100) : 0}%
-              </p>
-              <p className="text-xs text-muted-foreground">Rate</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Officers Table */}
-        <motion.div variants={item}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-bold">Officers</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {officers.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  No officers found.
+                  <div>
+                    {officer.status === "absent" && (
+                      <Badge variant="destructive">Absent</Badge>
+                    )}
+                    {officer.status === "no_account" && (
+                      <Badge variant="outline" className="text-muted-foreground border-dashed">No Account</Badge>
+                    )}
+                    {officer.status === "not_registered" && (
+                      <Badge variant="secondary" className="text-orange-500 bg-orange-500/10 hover:bg-orange-500/20">Pending</Badge>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <div className="divide-y divide-border">
-                  {officers.map((officer) => (
-                    <motion.div
-                      key={officer.uid}
-                      variants={item}
-                      className="flex items-center justify-between px-6 py-4 hover:bg-secondary/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        {officer.photoURL ? (
-                          <img
-                            src={officer.photoURL}
-                            alt=""
-                            className="w-8 h-8 rounded-full"
-                            referrerPolicy="no-referrer"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-xs font-bold">
-                            {officer.displayName?.[0]?.toUpperCase() || "?"}
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-semibold text-sm">{officer.displayName}</p>
-                          {officer.attendanceTime && (
-                            <p className="text-xs text-muted-foreground">{officer.attendanceTime}</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={`text-xs font-semibold ${officer.attendanceStatus ? "text-success" : "text-destructive"
-                            }`}
-                        >
-                          {officer.attendanceStatus ? "Present" : "Absent"}
-                        </span>
-                        <Switch
-                          checked={officer.attendanceStatus}
-                          onCheckedChange={() => toggleAttendance(officer)}
-                        />
-                      </div>
-                    </motion.div>
-                  ))}
+              ))}
+              {pendingList.length === 0 && (
+                <div className="h-32 flex flex-col items-center justify-center text-muted-foreground/50">
+                  <CheckCircle2 size={32} />
+                  <p className="text-sm font-medium mt-2">Everyone is here!</p>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </motion.div>
+            </div>
+          </motion.div>
+
+          {/* RIGHT: Present */}
+          <motion.div variants={item} className="flex flex-col gap-4 bg-green-500/5 rounded-xl p-4 border border-green-500/20 min-h-0 overflow-hidden">
+            <div className="flex items-center justify-between shrink-0">
+              <h2 className="text-lg font-black uppercase text-green-700 flex items-center gap-2">
+                <CheckCircle2 size={18} />
+                Present ({presentList.length})
+              </h2>
+              <span className="text-xs font-bold text-green-700 bg-green-200 px-2 py-1 rounded-full">
+                {Math.round((presentList.length / masterList.length) * 100) || 0}% Rate
+              </span>
+            </div>
+
+            <div className="overflow-y-auto pr-2 space-y-2 flex-1">
+              {presentList.map(officer => (
+                <div key={officer.name} className="flex items-center justify-between bg-card p-3 rounded-lg border-l-4 border-l-green-500 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    {officer.userPhoto ? (
+                      <img src={officer.userPhoto} className="w-10 h-10 rounded-full object-cover bg-secondary" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-green-100 text-green-700 flex items-center justify-center text-xs font-bold">
+                        {officer.name.substring(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-bold text-sm leading-tight text-foreground">{officer.name}</p>
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground">{officer.position}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-bold text-green-600 flex items-center gap-1 justify-end">
+                      <Clock size={10} />
+                      {officer.checkInTime}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground font-mono">
+                      {officer.idNumber || "NO ID"}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {presentList.length === 0 && (
+                <div className="h-32 flex flex-col items-center justify-center text-muted-foreground/50">
+                  <AlertCircle size={32} />
+                  <p className="text-sm font-medium mt-2">No check-ins yet.</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+        </div>
+
+        {/* Manual ID Check-in Dialog */}
+        <Dialog>
+          <DialogTrigger asChild>
+            <div className="hidden" id="manual-trigger"></div>
+          </DialogTrigger>
+          <DialogContent>
+            {/* Re-use existing manual check-in form logic if needed, or trigger via button above */}
+          </DialogContent>
+        </Dialog>
+
       </motion.div>
 
       <QrScanner
