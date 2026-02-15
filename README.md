@@ -1,73 +1,228 @@
-# Welcome to your Lovable project
+# CheckITS
 
-## Project info
+**CheckITS** is an attendance management system built for the Information Technology Society (ITS) at Holy Cross of Davao College. It streamlines officer attendance tracking across meetings and events through role-based dashboards, QR code scanning, and automated report generation.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+---
 
-## How can I edit this code?
+## Table of Contents
 
-There are several ways of editing your application.
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+- [Project Structure](#project-structure)
+- [Available Scripts](#available-scripts)
+- [Firebase Configuration](#firebase-configuration)
+- [License](#license)
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Features
 
-Changes made via Lovable will be committed automatically to this repo.
+### Authentication
+- Google OAuth sign-in restricted to `@hcdc.edu.ph` accounts
+- Email and password registration with profile completion
+- Role-based access control (Admin / Officer)
+- First registered user is automatically assigned the Admin role
 
-**Use your preferred IDE**
+### Admin Dashboard
+- Create, edit, and delete meetings/events
+- View all officer attendance records per event
+- Mark attendance manually or via QR code scanning
+- Manage officer accounts and roles
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Officer Dashboard
+- View upcoming and past meetings
+- Check personal attendance history
+- Complete and update profile information
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Attendance Tracking
+- QR code generation per event for quick check-ins
+- Real-time attendance marking with status tracking
+- Duplicate attendance prevention
 
-Follow these steps:
+### Reports
+- Generate attendance summaries and reports
+- Export reports to PDF via jsPDF
+- Filter by school year, date range, or event
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### User Experience
+- Dual theme support (light and dark modes)
+- Responsive design for desktop and mobile
+- Animated transitions with Framer Motion
+- Toast notifications for user feedback
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+---
 
-# Step 3: Install the necessary dependencies.
-npm i
+## Tech Stack
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+| Layer           | Technology                          |
+|-----------------|-------------------------------------|
+| Framework       | React 18 with TypeScript            |
+| Build Tool      | Vite 5                              |
+| Styling         | Tailwind CSS 3 + shadcn/ui (Radix)  |
+| Animations      | Framer Motion                       |
+| Routing         | React Router v6                     |
+| State & Data    | TanStack React Query                |
+| Authentication  | Firebase Authentication             |
+| Database        | Cloud Firestore                     |
+| QR Scanning     | html5-qrcode                        |
+| PDF Export      | jsPDF + jspdf-autotable             |
+| Charts          | Recharts                            |
+| Forms           | React Hook Form + Zod               |
+| Testing         | Vitest + Testing Library            |
+
+---
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) v18 or later
+- npm (included with Node.js) or [Bun](https://bun.sh/)
+- A [Firebase](https://console.firebase.google.com/) project with Authentication and Firestore enabled
+
+---
+
+## Getting Started
+
+1. **Clone the repository**
+
+   ```bash
+   git clone <repository-url>
+   cd meeting-minder
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   npm install
+   ```
+
+3. **Configure Firebase**
+
+   Update `src/lib/firebase.ts` with your Firebase project credentials. See [Firebase Configuration](#firebase-configuration) for details.
+
+4. **Start the development server**
+
+   ```bash
+   npm run dev
+   ```
+
+   The application will be available at `http://localhost:5173`.
+
+---
+
+## Project Structure
+
+```
+meeting-minder/
+├── public/                     # Static assets
+├── src/
+│   ├── components/
+│   │   ├── ui/                 # shadcn/ui component library
+│   │   ├── DashboardLayout.tsx # Shared layout for admin/officer views
+│   │   ├── FirstTimeModal.tsx  # Profile completion modal
+│   │   ├── ProtectedRoute.tsx  # Route guard with role checking
+│   │   ├── QrScanner.tsx       # QR code scanner component
+│   │   └── ThemeProvider.tsx   # Light/dark theme management
+│   ├── contexts/
+│   │   └── AuthContext.tsx     # Authentication state and methods
+│   ├── hooks/                  # Custom React hooks
+│   ├── lib/
+│   │   ├── firebase.ts         # Firebase app initialization
+│   │   ├── firestore.ts        # Firestore CRUD operations
+│   │   └── utils.ts            # Utility functions
+│   ├── pages/
+│   │   ├── AdminDashboard.tsx  # Admin main view
+│   │   ├── EventDetails.tsx    # Single event with attendance list
+│   │   ├── Login.tsx           # Sign-in page
+│   │   ├── NewEvent.tsx        # Event creation form
+│   │   ├── OfficerDashboard.tsx# Officer main view
+│   │   ├── Profile.tsx         # User profile management
+│   │   ├── Register.tsx        # Account registration
+│   │   └── Reports.tsx         # Attendance reports and exports
+│   ├── test/                   # Test files
+│   ├── App.tsx                 # Root component with routing
+│   ├── main.tsx                # Application entry point
+│   └── index.css               # Global styles and theme tokens
+├── index.html                  # HTML entry point
+├── tailwind.config.ts          # Tailwind CSS configuration
+├── vite.config.ts              # Vite build configuration
+├── tsconfig.json               # TypeScript configuration
+└── package.json
 ```
 
-**Edit a file directly in GitHub**
+---
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Available Scripts
 
-**Use GitHub Codespaces**
+| Command           | Description                                  |
+|-------------------|----------------------------------------------|
+| `npm run dev`     | Start the development server with HMR        |
+| `npm run build`   | Create a production build                    |
+| `npm run preview` | Preview the production build locally         |
+| `npm run lint`    | Run ESLint across the project                |
+| `npm run test`    | Run the test suite with Vitest               |
+| `npm run test:watch` | Run tests in watch mode                   |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+---
 
-## What technologies are used for this project?
+## Firebase Configuration
 
-This project is built with:
+This project requires a Firebase project with the following services enabled:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+1. **Authentication** — Enable the Google sign-in provider and Email/Password provider.
+2. **Cloud Firestore** — Create a Firestore database.
 
-## How can I deploy this project?
+### Firebase Credentials
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+Replace the values in `src/lib/firebase.ts` with your own Firebase config:
 
-## Can I connect a custom domain to my Lovable project?
+```typescript
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID",
+  measurementId: "YOUR_MEASUREMENT_ID",
+};
+```
 
-Yes, you can!
+### Firestore Security Rules
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Configure your Firestore rules in the Firebase Console to allow authenticated access:
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /meetings/{meetingId} {
+      allow read, write: if request.auth != null;
+    }
+    match /attendance/{recordId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+
+### Firestore Collections
+
+The application uses three collections:
+
+| Collection     | Description                            |
+|----------------|----------------------------------------|
+| `users`        | Officer and admin profiles             |
+| `meetings`     | Meetings and events created by admins  |
+| `attendance`   | Attendance records per user per event  |
+
+---
+
+## License
+
+This project was developed for the Information Technology Society (ITS) of Holy Cross of Davao College.

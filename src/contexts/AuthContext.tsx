@@ -57,8 +57,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const unsub = onAuthStateChanged(auth, async (user) => {
             setFirebaseUser(user);
             if (user) {
-                const profile = await getUser(user.uid);
-                setUserProfile(profile);
+                try {
+                    const profile = await getUser(user.uid);
+                    setUserProfile(profile);
+                } catch (error) {
+                    console.error("Error fetching user profile:", error);
+                    // If we can't read the profile (e.g. permissions or doesn't exist), 
+                    // we'll treat them as having no profile yet.
+                    setUserProfile(null);
+                }
             } else {
                 setUserProfile(null);
             }
