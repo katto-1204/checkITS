@@ -19,6 +19,7 @@ const NewEvent = () => {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
+  const [room, setRoom] = useState("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -33,6 +34,7 @@ const NewEvent = () => {
         date,
         time,
         location,
+        room,
         description,
         createdBy: userProfile.uid,
         schoolYear: userProfile.schoolYear || "",
@@ -101,15 +103,28 @@ const NewEvent = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  placeholder="e.g. Main Hall"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="bg-secondary border-border"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location (Building)</Label>
+                  <Input
+                    id="location"
+                    placeholder="e.g. Main Hall"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="bg-secondary border-border"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="room">Room</Label>
+                  <Input
+                    id="room"
+                    placeholder="e.g. 301"
+                    value={room}
+                    onChange={(e) => setRoom(e.target.value)}
+                    className="bg-secondary border-border"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">

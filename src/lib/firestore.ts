@@ -36,6 +36,7 @@ export interface Meeting {
     date: string;
     time: string;
     location: string;
+    room: string;
     description: string;
     createdBy: string;
     schoolYear: string;
@@ -106,6 +107,7 @@ export async function createMeeting(
 ): Promise<string> {
     const ref = await addDoc(collection(db, "meetings"), {
         ...data,
+        room: data.room || "",
         createdAt: serverTimestamp(),
     });
     return ref.id;

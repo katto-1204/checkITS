@@ -90,7 +90,13 @@ const AdminDashboard = () => {
     }
   };
 
-  // Handle QR scan — expecting officer UID, marks them present
+  /* ... inside component ... */
+  const [scannedOfficer, setScannedOfficer] = useState<any | null>(null); // Quick fix for type, ideally UserProfile
+  const [showOfficerModal, setShowOfficerModal] = useState(false);
+
+  /* ... */
+
+  // Handle QR scan — expecting officer UID, OPEN ID CARD
   const handleScanOfficerQR = async (data: string) => {
     if (!scanMeetingId) {
       toast.error("No meeting selected for scanning.");
@@ -107,19 +113,33 @@ const AdminDashboard = () => {
         return;
       }
 
+      setScannedOfficer(officerProfile);
+      setScannerOpen(false); // Close scanner
+      setShowOfficerModal(true); // Open ID Card
+
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to process QR.");
+    }
+  };
+
+  const handleConfirmAttendance = async () => {
+    if (!scannedOfficer || !scanMeetingId) return;
+    try {
       await markAttendance({
         meetingId: scanMeetingId,
-        userId: officerUid,
-        userDisplayName: officerProfile.displayName,
+        userId: scannedOfficer.uid,
+        userDisplayName: scannedOfficer.displayName,
         status: "present",
         markedBy: userProfile?.uid || "",
       });
-
-      toast.success(`${officerProfile.displayName} marked present!`);
+      toast.success(`${scannedOfficer.displayName} marked present!`);
+      setShowOfficerModal(false);
+      setScannedOfficer(null);
       loadData();
     } catch (err) {
       console.error(err);
-      toast.error("Failed to mark attendance.");
+      toast.error("Failed to mark.");
     }
   };
 
@@ -394,6 +414,38 @@ const AdminDashboard = () => {
           )}
         </motion.div>
       </motion.div>
+
+      {/* Officer ID Card Modal */}
+      <Dialog open={showOfficerModal} onOpenChange={setShowOfficerModal}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-center">Officer Identity</DialogTitle>
+          </DialogHeader>
+          {scannedOfficer && (
+            <div className="flex flex-col items-center gap-4 py-4">
+              <div className="w-24 h-24 rounded-full bg-primary/10 border-4 border-primary/20 flex items-center justify-center text-3xl font-black text-primary overflow-hidden">
+                {scannedOfficer.photoURL ? (
+                  <img src={scannedOfficer.photoURL} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  scannedOfficer.displayName.substring(0, 2).toUpperCase()
+                )}
+              </div>
+
+              <div className="text-center space-y-1">
+                <h2 className="text-2xl font-black uppercase tracking-tight">{scannedOfficer.displayName}</h2>
+                <div className="bg-secondary px-3 py-1 rounded-full inline-block">
+                  <p className="text-sm font-bold font-mono tracking-widest">{scannedOfficer.idNumber || "NO ID"}</p>
+                </div>
+                <p className="text-sm text-muted-foreground uppercase tracking-widest font-bold mt-2">{scannedOfficer.position || "OFFICER"}</p>
+              </div>
+
+              <Button onClick={handleConfirmAttendance} className="w-full h-12 text-lg font-bold mt-4" size="lg">
+                MARK PRESENT
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* QR Scanner for scanning officer QRs */}
       <QrScanner

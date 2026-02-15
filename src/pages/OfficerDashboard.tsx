@@ -125,6 +125,7 @@ const OfficerDashboard = () => {
       };
     });
 
+  // Handle scanning a meeting QR
   const handleScanMeetingQR = async (data: string) => {
     if (!userProfile) return;
     try {
@@ -138,19 +139,50 @@ const OfficerDashboard = () => {
         return;
       }
 
+      // Check if already registered
+      const isRegistered = attendance.some(a => a.meetingId === meeting.id && a.status === "present");
+      if (isRegistered) {
+        toast.info("You have already registered for this event.");
+      }
+
+      loadMeetingDetails(meeting);
+      // We do NOT mark attendance here anymore. User must click "Mark as Attended" in the modal.
+
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to process QR.");
+    }
+  };
+
+  const markSelfAttendance = async () => {
+    if (!selectedMeeting || !userProfile) return;
+    try {
+      // Check again for safety (optional but good)
+      const isRegistered = attendance.some(a => a.meetingId === selectedMeeting.id && a.status === "present");
+      if (isRegistered) {
+        toast.info("Already registered.");
+        return;
+      }
+
+      setLoadingDetails(true);
       await markAttendance({
-        meetingId,
+        meetingId: selectedMeeting.id,
         userId: userProfile.uid,
         userDisplayName: userProfile.displayName,
         status: "present",
         markedBy: userProfile.uid,
       });
 
-      toast.success(`Marked present for "${meeting.title}"!`);
-      loadData();
+      toast.success(`Marked present for "${selectedMeeting.title}"!`);
+      loadData(); // Reload to update state
+
+      // Update local attendance list in modal
+      await loadMeetingDetails(selectedMeeting);
+
     } catch (err) {
       console.error(err);
       toast.error("Failed to mark attendance.");
+      setLoadingDetails(false);
     }
   };
 
@@ -453,13 +485,33 @@ const OfficerDashboard = () => {
             )}
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2 sm:gap-0 flex-col sm:flex-row">
             <Button variant="outline" onClick={() => setDetailsOpen(false)}>Close</Button>
-            {selectedMeeting && new Date(selectedMeeting.date) >= new Date() && (
-              <Button onClick={() => {
-                setDetailsOpen(false);
-                setScannerOpen(true);
-              }}>Scan to Check-in</Button>
+
+            {selectedMeeting && (
+              (() => {
+                const isRegistered = attendance.some(a => a.meetingId === selectedMeeting.id && a.status === "present");
+                const isUpcoming = new Date(selectedMeeting.date) >= new Date();
+
+                if (isRegistered) {
+                  return (
+                    <Button disabled className="bg-green-600/20 text-green-600 border border-green-600/50 cursor-not-allowed hover:bg-green-600/20">
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Alrady Registered
+                    </Button>
+                  );
+                }
+
+                if (isUpcoming) {
+                  return (
+                    <Button onClick={markSelfAttendance} className="bg-primary text-primary-foreground">
+                      Mark as Attended
+                    </Button>
+                  )
+                }
+
+                return null;
+              })()
             )}
           </DialogFooter>
         </DialogContent>
