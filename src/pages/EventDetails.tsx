@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, CheckCircle2, XCircle, Clock, QrCode, FileDown, ScanLine } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { QRCodeSVG } from "qrcode.react";
+import QRCode from "react-qr-code";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -203,12 +203,10 @@ const EventDetails = () => {
                   <DialogTitle className="font-bold">Meeting QR</DialogTitle>
                 </DialogHeader>
                 <div className="flex flex-col items-center gap-4 py-4">
-                  <div className="bg-foreground p-4 rounded-xl">
-                    <QRCodeSVG
+                  <div className="bg-white p-4 rounded-xl">
+                    <QRCode
                       value={`checkits://meeting/${id}/checkin`}
                       size={220}
-                      bgColor="hsl(0, 0%, 96%)"
-                      fgColor="hsl(0, 0%, 5%)"
                     />
                   </div>
                   <p className="text-sm text-muted-foreground text-center">

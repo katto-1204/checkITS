@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { QRCodeSVG } from "qrcode.react";
+import QRCode from "react-qr-code";
 import QrScanner from "@/components/QrScanner";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -284,12 +284,10 @@ const AdminDashboard = () => {
                             <DialogTitle className="font-bold">Meeting QR</DialogTitle>
                           </DialogHeader>
                           <div className="flex flex-col items-center gap-4 py-4">
-                            <div className="bg-foreground p-4 rounded-xl">
-                              <QRCodeSVG
+                            <div className="bg-white p-4 rounded-xl">
+                              <QRCode
                                 value={`checkits://meeting/${meeting.id}/checkin`}
                                 size={200}
-                                bgColor="hsl(0, 0%, 96%)"
-                                fgColor="hsl(0, 0%, 5%)"
                               />
                             </div>
                             <p className="text-sm text-muted-foreground text-center">

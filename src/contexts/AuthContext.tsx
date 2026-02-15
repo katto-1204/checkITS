@@ -109,9 +109,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             setUserProfile(profile);
         } catch (error: any) {
-            if (error.code !== "auth/popup-closed-by-user") {
+            console.error("Google sign-in error:", error);
+            if (error.code === "permission-denied" || error.message.includes("Missing or insufficient permissions")) {
+                toast.error("Database permission denied. Please check your Firestore Security Rules.");
+            } else if (error.code !== "auth/popup-closed-by-user") {
                 toast.error("Sign-in failed. Please try again.");
-                console.error(error);
             }
         }
     };
@@ -134,13 +136,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             setUserProfile(profile);
         } catch (error: any) {
+            console.error("Sign-in error:", error);
             if (error.code === "auth/user-not-found" || error.code === "auth/invalid-credential") {
                 toast.error("Invalid email or password.");
             } else if (error.code === "auth/wrong-password") {
                 toast.error("Incorrect password.");
+            } else if (error.code === "permission-denied" || error.message.includes("Missing or insufficient permissions")) {
+                toast.error("Database permission denied. Please check your Firestore Security Rules.");
             } else {
                 toast.error("Sign-in failed. Please try again.");
-                console.error(error);
             }
         }
     };

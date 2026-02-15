@@ -8,7 +8,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { QRCodeSVG } from "qrcode.react";
+import QRCode from "react-qr-code";
 import QrScanner from "@/components/QrScanner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -200,12 +200,10 @@ const OfficerDashboard = () => {
                   <DialogTitle className="font-bold">My QR Code</DialogTitle>
                 </DialogHeader>
                 <div className="flex flex-col items-center gap-4 py-4">
-                  <div className="bg-foreground p-4 rounded-xl">
-                    <QRCodeSVG
+                  <div className="bg-white p-4 rounded-xl">
+                    <QRCode
                       value={`checkits://officer/${userProfile?.uid}`}
                       size={200}
-                      bgColor="hsl(0, 0%, 96%)"
-                      fgColor="hsl(0, 0%, 5%)"
                     />
                   </div>
                   <div className="text-center">
@@ -257,8 +255,8 @@ const OfficerDashboard = () => {
                       key={badge.name}
                       whileHover={{ scale: 1.08 }}
                       className={`flex flex-col items-center gap-1.5 p-3 rounded-lg text-center transition-colors ${earned
-                          ? "bg-primary/10 border border-primary/30"
-                          : "bg-secondary/50 opacity-40"
+                        ? "bg-primary/10 border border-primary/30"
+                        : "bg-secondary/50 opacity-40"
                         }`}
                     >
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${earned ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
@@ -291,14 +289,14 @@ const OfficerDashboard = () => {
                   <div
                     key={i}
                     className={`aspect-square flex items-center justify-center rounded-md text-sm font-medium transition-colors ${day === null
-                        ? ""
-                        : presentDays.includes(day)
-                          ? "bg-success/20 text-success"
-                          : absentDays.includes(day)
-                            ? "bg-destructive/20 text-destructive"
-                            : day === today
-                              ? "bg-primary text-primary-foreground"
-                              : "text-muted-foreground hover:bg-secondary"
+                      ? ""
+                      : presentDays.includes(day)
+                        ? "bg-success/20 text-success"
+                        : absentDays.includes(day)
+                          ? "bg-destructive/20 text-destructive"
+                          : day === today
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:bg-secondary"
                       }`}
                   >
                     {day}
@@ -350,10 +348,10 @@ const OfficerDashboard = () => {
                   </div>
                   <span
                     className={`text-xs px-2 py-1 rounded-full font-semibold ${a.status === "present"
-                        ? "bg-success/20 text-success"
-                        : a.status === "absent"
-                          ? "bg-destructive/20 text-destructive"
-                          : "bg-secondary text-muted-foreground"
+                      ? "bg-success/20 text-success"
+                      : a.status === "absent"
+                        ? "bg-destructive/20 text-destructive"
+                        : "bg-secondary text-muted-foreground"
                       }`}
                   >
                     {a.status === "present" ? "Present" : a.status === "absent" ? "Absent" : "Pending"}
