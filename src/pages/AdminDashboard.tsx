@@ -24,6 +24,7 @@ import {
   getUser,
   getAllUsers,
   Meeting,
+  deleteAttendanceForMeeting,
 } from "@/lib/firestore";
 import { toast } from "sonner";
 
@@ -82,6 +83,7 @@ const AdminDashboard = () => {
   const handleDeleteMeeting = async (id: string) => {
     if (!confirm("Delete this meeting?")) return;
     try {
+      await deleteAttendanceForMeeting(id);
       await deleteMeeting(id);
       toast.success("Meeting deleted.");
       loadData();

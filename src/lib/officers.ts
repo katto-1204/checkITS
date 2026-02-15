@@ -1,7 +1,8 @@
 export const OFFICERS_2025_2026 = [
     // Executives
-    { name: "De Lara", position: "President", role: "executive" },
-    { name: "Keana Giron", position: "Internal Vice President", role: "executive" },
+    { name: "Jessamine De Lara", position: "President", role: "executive" },
+    { name: "Keana Giron", position: "Moderator", role: "executive" },
+    { name: "Karen Refamonte", position: "Internal Vice President", role: "executive" },
     { name: "Chelsea Mae J. Banlasan", position: "External Vice President", role: "executive" },
     { name: "Ashlee M. Madriñan", position: "Secretary", role: "executive" },
     { name: "Diana Rose Suello", position: "Assistant Secretary", role: "executive" },
@@ -16,18 +17,18 @@ export const OFFICERS_2025_2026 = [
     { name: "Francis Xavier Baclao", position: "3rd Year Representative", role: "executive" },
 
     // Creatives
-    { name: "Catherine Arnado", position: "Head - Creatives", role: "creative" },
-    { name: "Kyle Andrei Abellera", position: "Committee - Creatives", role: "creative" },
-    { name: "Rexxa Anika Iway", position: "Committee - Creatives", role: "creative" },
-    { name: "Ian Benedict Peteros", position: "Committee - Creatives", role: "creative" },
-    { name: "Dhruv Jae E. Guboc", position: "Committee - Creatives", role: "creative" },
+    { name: "Catherine Arnado", position: "Head", role: "creative" },
+    { name: "Kyle Andrei Abellera", position: "Committee", role: "creative" },
+    { name: "Rexxa Anika Iway", position: "Committee", role: "creative" },
+    { name: "Ian Benedict Peteros", position: "Committee", role: "creative" },
+    { name: "Dhruv Jae E. Guboc", position: "Committee", role: "creative" },
     { name: "Rhonan Madarang", position: "Documentary Lead", role: "creative" },
 
     // Logistics
-    { name: "King Wee Kon L. Huelva", position: "Head - Logistics", role: "logistics" },
-    { name: "Kurt Jershon Vidal", position: "Committee - Logistics", role: "logistics" },
-    { name: "Christan P. Luces", position: "Committee - Logistics", role: "logistics" },
-    { name: "Jhon Elpidio Dagmil", position: "Committee - Logistics", role: "logistics" },
-    { name: "Alec Eight N. Jazmin", position: "Committee - Logistics", role: "logistics" },
-    { name: "Rey Humperdinck S. Arendain", position: "Committee - Logistics", role: "logistics" },
+    { name: "King Wee Kon L. Huelva", position: "Head", role: "logistics" },
+    { name: "Kurt Jershon Vidal", position: "Committee", role: "logistics" },
+    { name: "Christan P. Luces", position: "Committee", role: "logistics" },
+    { name: "Jhon Elpidio Dagmil", position: "Committee", role: "logistics" },
+    { name: "Alec Eight N. Jazmin", position: "Committee", role: "logistics" },
+    { name: "Rey Humperdinck S. Arendain", position: "Committee", role: "logistics" },
 ];

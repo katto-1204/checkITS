@@ -93,21 +93,32 @@ const OfficerDashboard = () => {
     }
   };
 
-  const presentCount = new Set(attendance.filter((a) => a.status === "present").map(a => a.meetingId)).size;
+  // Calculate Status - Only consider meetings that strictly exist in the meetings array
+  const validMeetingIds = new Set(meetings.map(m => m.id));
+
+  const presentCount = new Set(
+    attendance
+      .filter((a) => a.status === "present" && validMeetingIds.has(a.meetingId))
+      .map(a => a.meetingId)
+  ).size;
+
   const totalEvents = meetings.length;
   const attendanceRate = totalEvents > 0 ? Math.min(100, Math.round((presentCount / totalEvents) * 100)) : 0;
 
-  // Calculate streak
+  // Calculate streak - sorting meetings descending
   const calculateStreak = () => {
     const sortedMeetings = [...meetings].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     let streak = 0;
-    for (const m of sortedMeetings) {
-      const record = attendance.find((a) => a.meetingId === m.id);
+
+    // Find the index of the first past meeting
+    const pastMeetings = sortedMeetings.filter(m => new Date(m.date) < new Date());
+
+    for (const m of pastMeetings) {
+      const record = attendance.find(a => a.meetingId === m.id);
       if (record && record.status === "present") {
         streak++;
       } else {
-        // If it's today logic could be complex, but for now simple streak
-        if (new Date(m.date) < new Date()) break;
+        break; // Streak broken
       }
     }
     return streak;

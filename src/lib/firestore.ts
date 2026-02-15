@@ -201,3 +201,9 @@ export async function getAttendanceForUser(
 export async function deleteAttendance(id: string): Promise<void> {
     await deleteDoc(doc(db, "attendance", id));
 }
+
+export async function deleteAttendanceForMeeting(meetingId: string): Promise<void> {
+    const records = await getAttendanceForMeeting(meetingId);
+    const deletePromises = records.map(r => deleteDoc(doc(db, "attendance", r.id)));
+    await Promise.all(deletePromises);
+}
