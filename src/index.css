@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root,
+  .dark {
+    --background: 0 0% 5%;
+    --foreground: 0 0% 96%;
+
+    --card: 0 0% 9%;
+    --card-foreground: 0 0% 96%;
+
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 96%;
+
+    --primary: 4 85% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 0 0% 96%;
+
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 55%;
+
+    --accent: 0 0% 14%;
+    --accent-foreground: 0 0% 96%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 4 85% 50%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 3%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 4 85% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 0 0% 14%;
+    --sidebar-ring: 4 85% 50%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+  }
+
+  .neon {
+    --background: 240 20% 3%;
+    --foreground: 0 0% 96%;
+
+    --card: 240 15% 7%;
+    --card-foreground: 0 0% 96%;
+
+    --popover: 240 15% 7%;
+    --popover-foreground: 0 0% 96%;
+
+    --primary: 0 100% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 12% 12%;
+    --secondary-foreground: 0 0% 96%;
+
+    --muted: 240 12% 12%;
+    --muted-foreground: 240 5% 50%;
+
+    --accent: 240 12% 12%;
+    --accent-foreground: 0 0% 96%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 10% 16%;
+    --input: 240 10% 16%;
+    --ring: 0 100% 55%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 240 20% 2%;
+    --sidebar-foreground: 240 5% 80%;
+    --sidebar-primary: 0 100% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 12% 8%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 240 10% 12%;
+    --sidebar-ring: 0 100% 55%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+  }
+
+  h1 {
+    @apply font-black tracking-tight;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-sm border border-border;
+  }
+
+  .stat-glow {
+    box-shadow: 0 0 30px -5px hsl(var(--primary) / 0.25);
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[hsl(4,85%,50%)] to-[hsl(20,90%,55%)];
+  }
+
+  .neon .stat-glow {
+    box-shadow: 0 0 40px -5px hsl(var(--primary) / 0.4), 0 0 80px -20px hsl(var(--primary) / 0.2);
+  }
+
+  .neon .glass-card {
+    box-shadow: 0 0 15px -5px hsl(var(--primary) / 0.1);
+  }
+
+  .neon .text-gradient {
+    @apply from-[hsl(0,100%,55%)] to-[hsl(30,100%,55%)];
+    filter: drop-shadow(0 0 8px hsl(0, 100%, 55%, 0.5));
+  }
+}
