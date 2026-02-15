@@ -14,6 +14,7 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isAdminLogin, setIsAdminLogin] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -34,14 +35,6 @@ const Login = () => {
     await signInWithEmail(email, password);
     setIsSigningIn(false);
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -72,21 +65,38 @@ const Login = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.4 }}
-          className="glass-card rounded-lg p-8"
+          className="glass-card rounded-lg p-8 relative overflow-hidden"
         >
-          <h2 className="text-xl font-bold mb-2">Sign In</h2>
-          <p className="text-sm text-muted-foreground mb-6">
-            Use your <strong>@hcdc.edu.ph</strong> account to continue.
-          </p>
+          {/* Admin Indicator/Banner */}
+          {isAdminLogin && (
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-orange-500" />
+          )}
 
-          {/* Email + Password Form */}
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-xl font-bold">{isAdminLogin ? "Admin Login" : "Officer Login"}</h2>
+              <p className="text-sm text-muted-foreground">
+                {isAdminLogin ? "Enter Admin Credentials" : "Enter your ID Number"}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsAdminLogin(!isAdminLogin)}
+              className={isAdminLogin ? "text-red-500 hover:text-red-600 hover:bg-red-50" : "text-muted-foreground"}
+            >
+              {isAdminLogin ? "Switch to Officer" : "Admin?"}
+            </Button>
+          </div>
+
+          {/* ID Number + Password Form */}
           <form onSubmit={handleEmailLogin} className="space-y-4 mb-5">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{isAdminLogin ? "Username / Email" : "ID Number"}</Label>
               <Input
                 id="email"
-                type="email"
-                placeholder="you@hcdc.edu.ph"
+                type="text"
+                placeholder={isAdminLogin ? "admin" : "e.g. 2023-00123"}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="bg-secondary border-border"
@@ -117,7 +127,7 @@ const Login = () => {
 
             <Button
               type="submit"
-              className="w-full h-11 font-bold"
+              className={`w-full h-11 font-bold ${isAdminLogin ? "bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700" : ""}`}
               disabled={isSigningIn}
             >
               {isSigningIn ? (
@@ -127,7 +137,7 @@ const Login = () => {
                   className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full"
                 />
               ) : (
-                "Sign In"
+                isAdminLogin ? "Login as Admin" : "Sign In"
               )}
             </Button>
           </form>
@@ -156,7 +166,7 @@ const Login = () => {
           </Button>
 
           <p className="text-xs text-muted-foreground text-center mt-4">
-            Only <strong>@hcdc.edu.ph</strong> emails are accepted.
+            Log in with your **ID Number** or Google (@hcdc.edu.ph).
           </p>
 
           {/* Create Account Link */}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Eye, EyeOff, UserPlus } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, UserPlus, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const CATEGORIES = ["Executive", "Creatives", "Logistics"] as const;
 
@@ -57,9 +58,9 @@ const Register = () => {
     const navigate = useNavigate();
     const { registerWithEmail } = useAuth();
 
+    const [role, setRole] = useState<"admin" | "officer">("officer");
     const [fullName, setFullName] = useState("");
     const [idNumber, setIdNumber] = useState("");
-    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -75,11 +76,6 @@ const Register = () => {
         e.preventDefault();
         setError("");
 
-        if (!email.endsWith("@hcdc.edu.ph")) {
-            setError("Only @hcdc.edu.ph email addresses are allowed.");
-            return;
-        }
-
         if (password !== confirmPassword) {
             setError("Passwords do not match.");
             return;
@@ -90,7 +86,8 @@ const Register = () => {
             return;
         }
 
-        if (!category || !position) {
+        // Only require category/position if role is officer
+        if (role === "officer" && (!category || !position)) {
             setError("Please select your category and position.");
             return;
         }
@@ -104,12 +101,12 @@ const Register = () => {
         try {
             await registerWithEmail({
                 fullName,
-                email,
-                password,
                 idNumber,
-                category,
-                position,
+                password,
+                category: role === "officer" ? category : "",
+                position: role === "officer" ? position : "",
                 schoolYear,
+                role,
             });
             navigate("/login");
         } catch {
@@ -157,7 +154,7 @@ const Register = () => {
                         >
                             <ArrowLeft size={20} />
                         </button>
-                        <h2 className="text-xl font-bold">Officer Registration</h2>
+                        <h2 className="text-xl font-bold">Register</h2>
                     </div>
 
                     {error && (
@@ -171,6 +168,29 @@ const Register = () => {
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-4">
+                        {/* Role Selection */}
+                        <div className="space-y-3 p-4 bg-secondary/30 rounded-lg border border-border/50">
+                            <Label className="text-base font-semibold flex items-center gap-2">
+                                <Shield size={16} className="text-primary" />
+                                Select Role
+                            </Label>
+                            <RadioGroup
+                                defaultValue="officer"
+                                value={role}
+                                onValueChange={(v) => setRole(v as "admin" | "officer")}
+                                className="flex gap-4"
+                            >
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="officer" id="officer" />
+                                    <Label htmlFor="officer" className="cursor-pointer">Officer</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="admin" id="admin" />
+                                    <Label htmlFor="admin" className="cursor-pointer">Admin</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+
                         {/* Full Name */}
                         <div className="space-y-2">
                             <Label htmlFor="fullName">Full Name</Label>
@@ -195,20 +215,7 @@ const Register = () => {
                                 className="bg-secondary border-border"
                                 required
                             />
-                        </div>
-
-                        {/* HCDC Email */}
-                        <div className="space-y-2">
-                            <Label htmlFor="email">HCDC Email</Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                placeholder="you@hcdc.edu.ph"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="bg-secondary border-border"
-                                required
-                            />
+                            <p className="text-xs text-muted-foreground">This will be used as your login ID.</p>
                         </div>
 
                         {/* Password */}
@@ -248,46 +255,53 @@ const Register = () => {
                             </div>
                         </div>
 
-                        {/* Category + Position */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>Officer Category</Label>
-                                <Select
-                                    value={category}
-                                    onValueChange={(val) => {
-                                        setCategory(val);
-                                        setPosition(""); // Reset position when category changes
-                                    }}
-                                >
-                                    <SelectTrigger className="bg-secondary border-border">
-                                        <SelectValue placeholder="Select category" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {CATEGORIES.map((cat) => (
-                                            <SelectItem key={cat} value={cat}>
-                                                {cat}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                        {/* Category + Position (Conditional for Officers) */}
+                        {role === "officer" && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                            >
+                                <div className="space-y-2">
+                                    <Label>Officer Category</Label>
+                                    <Select
+                                        value={category}
+                                        onValueChange={(val) => {
+                                            setCategory(val);
+                                            setPosition(""); // Reset position when category changes
+                                        }}
+                                    >
+                                        <SelectTrigger className="bg-secondary border-border">
+                                            <SelectValue placeholder="Select category" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {CATEGORIES.map((cat) => (
+                                                <SelectItem key={cat} value={cat}>
+                                                    {cat}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
 
-                            <div className="space-y-2">
-                                <Label>Position</Label>
-                                <Select value={position} onValueChange={setPosition} disabled={!category}>
-                                    <SelectTrigger className="bg-secondary border-border">
-                                        <SelectValue placeholder={category ? "Select position" : "Select category first"} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {availablePositions.map((pos) => (
-                                            <SelectItem key={pos} value={pos}>
-                                                {pos}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
+                                <div className="space-y-2">
+                                    <Label>Position</Label>
+                                    <Select value={position} onValueChange={setPosition} disabled={!category}>
+                                        <SelectTrigger className="bg-secondary border-border">
+                                            <SelectValue placeholder={category ? "Select position" : "Select category first"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {availablePositions.map((pos) => (
+                                                <SelectItem key={pos} value={pos}>
+                                                    {pos}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </motion.div>
+                        )}
 
                         {/* School Year */}
                         <div className="space-y-2">

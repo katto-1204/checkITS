@@ -11,6 +11,7 @@ import Register from "./pages/Register";
 import AdminDashboard from "./pages/AdminDashboard";
 import OfficerDashboard from "./pages/OfficerDashboard";
 import EventDetails from "./pages/EventDetails";
+import OfficersList from "./pages/OfficersList";
 import NewEvent from "./pages/NewEvent";
 import Reports from "./pages/Reports";
 import Profile from "./pages/Profile";
@@ -51,6 +52,14 @@ const App = () => (
                 element={
                   <ProtectedRoute requiredRole="admin">
                     <NewEvent />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/officers"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <OfficersList />
                   </ProtectedRoute>
                 }
               />

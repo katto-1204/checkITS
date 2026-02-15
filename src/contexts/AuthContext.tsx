@@ -20,7 +20,7 @@ import { toast } from "sonner";
 
 interface RegisterData {
     fullName: string;
-    email: string;
+    // email: string; // Removed, using idNumber
     password: string;
     idNumber: string;
     category: string;
@@ -34,7 +34,7 @@ interface AuthContextValue {
     loading: boolean;
     signInWithGoogle: () => Promise<void>;
     signInWithEmail: (email: string, password: string) => Promise<void>;
-    registerWithEmail: (data: RegisterData) => Promise<void>;
+    registerWithEmail: (data: RegisterData & { role: "admin" | "officer" }) => Promise<void>;
     signOut: () => Promise<void>;
     refreshProfile: () => Promise<void>;
 }
@@ -118,12 +118,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const signInWithEmail = async (email: string, password: string) => {
+    const signInWithEmail = async (identifier: string, password: string) => {
         try {
-            if (!email.endsWith("@hcdc.edu.ph")) {
-                toast.error("Only @hcdc.edu.ph emails are allowed.");
-                return;
-            }
+            // Check if identifier is an email, otherwise treat as ID number
+            const email = identifier.includes("@") ? identifier : `${identifier}@checkits.local`;
 
             const result = await signInWithEmailAndPassword(auth, email, password);
             const profile = await getUser(result.user.uid);
@@ -138,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (error: any) {
             console.error("Sign-in error:", error);
             if (error.code === "auth/user-not-found" || error.code === "auth/invalid-credential") {
-                toast.error("Invalid email or password.");
+                toast.error("Invalid ID Number or password.");
             } else if (error.code === "auth/wrong-password") {
                 toast.error("Incorrect password.");
             } else if (error.code === "permission-denied" || error.message.includes("Missing or insufficient permissions")) {
@@ -149,34 +147,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const registerWithEmail = async (data: RegisterData) => {
+    const registerWithEmail = async (data: RegisterData & { role: "admin" | "officer" }) => {
         try {
-            if (!data.email.endsWith("@hcdc.edu.ph")) {
-                toast.error("Only @hcdc.edu.ph emails are allowed.");
-                return;
-            }
+            // Use ID number to generate a unique email for auth
+            // This allows us to use Firebase Auth without requiring real emails
+            const email = `${data.idNumber}@checkits.local`;
 
-            const result = await createUserWithEmailAndPassword(auth, data.email, data.password);
+            const result = await createUserWithEmailAndPassword(auth, email, data.password);
             const user = result.user;
 
             // Update Firebase Auth display name
             await updateProfile(user, { displayName: data.fullName });
 
-            // Check if first user → admin
-            const first = await isFirstUser();
-
-            // Create Firestore user doc with all the registration data
+            // Create Firestore user doc
             await createUser(user.uid, {
-                email: data.email,
+                email: email,
                 displayName: data.fullName,
                 photoURL: "",
-                role: first ? "admin" : "officer",
+                role: data.role, // Use selected role
             });
 
             // Update with extra fields
             await updateUserProfile(user.uid, {
                 idNumber: data.idNumber,
-                position: `${data.category} - ${data.position}`,
+                position: data.role === "admin" ? "Administrator" : `${data.category} - ${data.position}`,
                 schoolYear: data.schoolYear,
                 isProfileComplete: true,
             });
@@ -186,10 +180,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setFirebaseUser(null);
             setUserProfile(null);
 
-            toast.success("Account created! Please sign in.");
+            toast.success("Account created! Please sign in with your ID Number.");
         } catch (error: any) {
             if (error.code === "auth/email-already-in-use") {
-                toast.error("An account with this email already exists.");
+                toast.error("An account with this ID Number already exists.");
             } else if (error.code === "auth/weak-password") {
                 toast.error("Password must be at least 6 characters.");
             } else {

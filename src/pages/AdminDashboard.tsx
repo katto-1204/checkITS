@@ -1,17 +1,18 @@
 import { motion } from "framer-motion";
 import {
   Users, CalendarDays, TrendingUp, Plus, Search, Edit, Trash2,
-  QrCode, FileDown, Bell, ScanLine,
+  QrCode, FileDown, ScanLine,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import QRCode from "react-qr-code";
 import QrScanner from "@/components/QrScanner";
+import AttendanceChart from "@/components/AttendanceChart";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,8 +22,8 @@ import {
   deleteMeeting,
   markAttendance,
   getUser,
+  getAllUsers,
   Meeting,
-  AttendanceRecord,
 } from "@/lib/firestore";
 import { toast } from "sonner";
 
@@ -202,6 +203,11 @@ const AdminDashboard = () => {
           ))}
         </motion.div>
 
+        {/* Attendance Chart */}
+        <motion.div variants={item}>
+          <AttendanceChart meetings={meetings} attendanceCounts={attendanceCounts} />
+        </motion.div>
+
         {/* Meetings List */}
         <motion.div variants={item}>
           <div className="flex items-center justify-between mb-4">
@@ -294,6 +300,64 @@ const AdminDashboard = () => {
                               Officers scan this QR code to mark attendance for <strong>{meeting.title}</strong>
                             </p>
                           </div>
+                        </DialogContent>
+                      </Dialog>
+
+                      {/* Manual ID Check-in */}
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Edit size={14} />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent onClick={(e) => e.stopPropagation()}>
+                          <DialogHeader>
+                            <DialogTitle>Manual Check-in: {meeting.title}</DialogTitle>
+                          </DialogHeader>
+                          <form
+                            onSubmit={async (e) => {
+                              e.preventDefault();
+                              const formData = new FormData(e.currentTarget);
+                              const idNum = formData.get("idNumber") as string;
+                              if (!idNum) return;
+
+                              try {
+                                const allUsers = await getAllUsers();
+                                const officer = allUsers.find(u => u.idNumber === idNum);
+
+                                if (!officer) {
+                                  toast.error("Officer with this ID not found.");
+                                  return;
+                                }
+
+                                await markAttendance({
+                                  meetingId: meeting.id,
+                                  userId: officer.uid,
+                                  userDisplayName: officer.displayName,
+                                  status: "present",
+                                  markedBy: userProfile!.uid,
+                                });
+                                toast.success(`${officer.displayName} marked present.`);
+                                loadData();
+                                (e.target as HTMLFormElement).reset();
+                              } catch (err) {
+                                console.error(err);
+                                toast.error("Failed to mark attendance.");
+                              }
+                            }}
+                            className="space-y-4 pt-4"
+                          >
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Officer ID Number</label>
+                              <Input name="idNumber" placeholder="e.g. 2023-00123" required />
+                            </div>
+                            <Button type="submit" className="w-full">Mark Present</Button>
+                          </form>
                         </DialogContent>
                       </Dialog>
 

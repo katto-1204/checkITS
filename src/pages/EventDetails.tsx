@@ -223,6 +223,60 @@ const EventDetails = () => {
               <ScanLine size={16} className="mr-2" />
               Scan Officer
             </Button>
+
+            {/* Manual ID Check-in */}
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="secondary" className="font-semibold">
+                  <Edit size={16} className="mr-2" />
+                  Manual ID
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Manual Check-in</DialogTitle>
+                </DialogHeader>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    const idNum = formData.get("idNumber") as string;
+                    if (!idNum) return;
+
+                    try {
+                      const allUsers = await getAllUsers();
+                      const officer = allUsers.find(u => u.idNumber === idNum);
+
+                      if (!officer) {
+                        toast.error("Officer with this ID not found.");
+                        return;
+                      }
+
+                      await markAttendance({
+                        meetingId: id!,
+                        userId: officer.uid,
+                        userDisplayName: officer.displayName,
+                        status: "present",
+                        markedBy: userProfile!.uid,
+                      });
+                      toast.success(`${officer.displayName} marked present.`);
+                      loadData();
+                      (e.target as HTMLFormElement).reset();
+                    } catch (err) {
+                      toast.error("Failed to mark attendance.");
+                    }
+                  }}
+                  className="space-y-4 pt-4"
+                >
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Officer ID Number</label>
+                    <Input name="idNumber" placeholder="e.g. 2023-00123" required />
+                  </div>
+                  <Button type="submit" className="w-full">Mark Present</Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+
             <Button variant="secondary" onClick={exportEventPDF} className="font-semibold">
               <FileDown size={16} className="mr-2" />
               Export PDF

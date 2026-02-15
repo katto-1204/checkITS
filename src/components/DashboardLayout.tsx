@@ -24,6 +24,7 @@ interface DashboardLayoutProps {
 const adminLinks = [
   { to: "/admin", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/admin/events/new", icon: Plus, label: "New Meeting" },
+  { to: "/admin/officers", icon: User, label: "Officers" },
   { to: "/admin/reports", icon: BarChart3, label: "Reports" },
   { to: "/profile", icon: User, label: "Profile" },
 ];
