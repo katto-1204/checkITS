@@ -25,8 +25,11 @@ import {
   getAllUsers,
   Meeting,
   deleteAttendanceForMeeting,
+  AttendanceRecord,
 } from "@/lib/firestore";
 import { toast } from "sonner";
+import { collection, query, onSnapshot, where, orderBy } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const container = {
   hidden: { opacity: 0 },
@@ -47,29 +50,48 @@ const AdminDashboard = () => {
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanMeetingId, setScanMeetingId] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    try {
-      const allMeetings = await getMeetings();
-      setMeetings(allMeetings);
-
-      // Load attendance counts for each meeting
-      const counts: Record<string, number> = {};
-      for (const m of allMeetings) {
-        const attendance = await getAttendanceForMeeting(m.id);
-        counts[m.id] = attendance.filter((a) => a.status === "present").length;
-      }
-      setAttendanceCounts(counts);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to load data.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    let unsubscribeMeetings: () => void;
+    let unsubscribeAttendance: () => void;
+
+    const init = async () => {
+      try {
+        const allMeetings = await getMeetings();
+        setMeetings(allMeetings);
+
+        // Listen for meeting changes (e.g. new meetings created)
+        const qMeetings = query(collection(db, "meetings"), orderBy("createdAt", "desc"));
+        unsubscribeMeetings = onSnapshot(qMeetings, (snap) => {
+          setMeetings(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Meeting));
+        });
+
+        // Listen for all attendance and update counts
+        const qAttendance = query(collection(db, "attendance"));
+        unsubscribeAttendance = onSnapshot(qAttendance, (snap) => {
+          const records = snap.docs.map(d => d.data() as AttendanceRecord);
+          const counts: Record<string, number> = {};
+          records.forEach(r => {
+            if (r.status === "present") {
+              counts[r.meetingId] = (counts[r.meetingId] || 0) + 1;
+            }
+          });
+          setAttendanceCounts(counts);
+          setLoading(false);
+        });
+
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to sync data.");
+        setLoading(false);
+      }
+    };
+
+    init();
+    return () => {
+      unsubscribeMeetings?.();
+      unsubscribeAttendance?.();
+    };
+  }, []);
 
   const filteredMeetings = meetings.filter(
     (e) =>
@@ -86,7 +108,6 @@ const AdminDashboard = () => {
       await deleteAttendanceForMeeting(id);
       await deleteMeeting(id);
       toast.success("Meeting deleted.");
-      loadData();
     } catch {
       toast.error("Failed to delete.");
     }
@@ -153,7 +174,6 @@ const AdminDashboard = () => {
       toast.success(`${scannedOfficer.displayName} marked present!`);
       setShowOfficerModal(false);
       setScannedOfficer(null);
-      loadData();
     } catch (err) {
       console.error(err);
       toast.error("Failed to mark.");

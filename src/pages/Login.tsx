@@ -56,6 +56,39 @@ const Login = () => {
 
   const [noAccountOpen, setNoAccountOpen] = useState(false);
 
+  if ((firebaseUser && !loading) || isSigningIn) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-background to-background">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center"
+        >
+          <div className="relative mb-8">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 4, ease: "linear" }}
+              className="absolute -inset-4 rounded-full border-2 border-primary/20 border-t-primary"
+            />
+            <img src="/itslogo.png" alt="Logo" className="w-20 h-20 object-contain relative z-10" />
+          </div>
+
+          <h2 className="text-2xl font-black tracking-tight mb-2">
+            Welcome to Check<span className="text-primary italic">ITS</span>
+          </h2>
+          <div className="flex items-center gap-2 text-muted-foreground font-medium">
+            <motion.div
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ repeat: Infinity, duration: 1.5 }}
+              className="w-1.5 h-1.5 rounded-full bg-primary"
+            />
+            {isSigningIn ? "Signing you in..." : "Redirecting to your dashboard..."}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <motion.div

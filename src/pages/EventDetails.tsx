@@ -20,9 +20,12 @@ import {
   markAttendance,
   getUser,
   Meeting,
+  AttendanceRecord,
 } from "@/lib/firestore";
 import { toast } from "sonner";
 import { OFFICERS_2025_2026 } from "@/lib/officers";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const container = {
   hidden: { opacity: 0 },
@@ -48,73 +51,83 @@ const EventDetails = () => {
   const [elapsedTime, setElapsedTime] = useState<string>("00:00:00");
   const [isStarted, setIsStarted] = useState(false);
 
-  const loadData = useCallback(async () => {
-    if (!id) return;
-    try {
-      const [meetingData, attendanceData, allUsers] = await Promise.all([
-        getMeeting(id),
-        getAttendanceForMeeting(id),
-        getAllUsers(),
-      ]);
+  // Map Master List to Users and Attendance
+  const mapMasterList = useCallback((attendanceData: AttendanceRecord[], allUsers: any[]) => {
+    return OFFICERS_2025_2026.map((def) => {
+      // Normalize name for better matching: remove middle initials and dots
+      const normalize = (name: string) =>
+        name.toLowerCase()
+          .replace(/[.\s]/g, " ") // replace dots and spaces with single space
+          .replace(/\b[a-z]\s/g, " ") // remove single letter initials followed by space
+          .trim()
+          .split(/\s+/)
+          .filter(word => word.length > 1); // keep only words longer than 1 char
 
-      setMeeting(meetingData);
+      const defParts = normalize(def.name);
 
-      // Map Master List to Users and Attendance
-      const mapped = OFFICERS_2025_2026.map((def) => {
-        // Normalize name for better matching: remove middle initials and dots
-        const normalize = (name: string) =>
-          name.toLowerCase()
-            .replace(/[.\s]/g, " ") // replace dots and spaces with single space
-            .replace(/\b[a-z]\s/g, " ") // remove single letter initials followed by space
-            .trim()
-            .split(/\s+/)
-            .filter(word => word.length > 1); // keep only words longer than 1 char
-
-        const defParts = normalize(def.name);
-
-        // 1. Find if they have an account
-        const user = allUsers.find(u => {
-          const uParts = normalize(u.displayName);
-          // Check if all parts of the shorter name are in the longer name
-          const [smaller, larger] = defParts.length < uParts.length ? [defParts, uParts] : [uParts, defParts];
-          return smaller.every(part => larger.includes(part));
-        });
-
-        // 2. Find attendance
-        const record = user
-          ? attendanceData.find(a => a.userId === user.uid)
-          : attendanceData.find(a => normalize(a.userDisplayName).every(p => defParts.includes(p)));
-
-        let status = "not_registered"; // Default: Has account but not checked in
-        if (!user) status = "no_account"; // No account
-        if (record) status = record.status; // Present or Absent
-
-        return {
-          ...def,
-          userUid: user?.uid,
-          userPhoto: user?.photoURL,
-          idNumber: user?.idNumber,
-          status, // 'present', 'absent', 'not_registered', 'no_account'
-          recordId: record?.id,
-          checkInTime: record?.markedAt
-            ? new Date(record.markedAt.seconds * 1000).toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" })
-            : null
-        };
+      // 1. Find if they have an account
+      const user = allUsers.find(u => {
+        const uParts = normalize(u.displayName);
+        // Check if all parts of the shorter name are in the longer name
+        const [smaller, larger] = defParts.length < uParts.length ? [defParts, uParts] : [uParts, defParts];
+        return smaller.every(part => larger.includes(part));
       });
 
-      setMasterList(mapped);
+      // 2. Find attendance
+      const record = user
+        ? attendanceData.find(a => a.userId === user.uid)
+        : attendanceData.find(a => normalize(a.userDisplayName).every(p => defParts.includes(p)));
 
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to load details.");
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
+      let status = "not_registered"; // Default: Has account but not checked in
+      if (!user) status = "no_account"; // No account
+      if (record) status = record.status; // Present or Absent
+
+      return {
+        ...def,
+        userUid: user?.uid,
+        userPhoto: user?.photoURL,
+        idNumber: user?.idNumber,
+        status, // 'present', 'absent', 'not_registered', 'no_account'
+        recordId: record?.id,
+        checkInTime: record?.markedAt
+          ? new Date(record.markedAt.seconds * 1000).toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" })
+          : null
+      };
+    });
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!id) return;
+
+    let unsubscribe: () => void;
+
+    const init = async () => {
+      try {
+        const [meetingData, allUsers] = await Promise.all([
+          getMeeting(id),
+          getAllUsers(),
+        ]);
+        setMeeting(meetingData);
+
+        // Real-time attendance listener
+        const q = query(collection(db, "attendance"), where("meetingId", "==", id));
+        unsubscribe = onSnapshot(q, (snapshot) => {
+          const attendanceData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as AttendanceRecord);
+          const mapped = mapMasterList(attendanceData, allUsers);
+          setMasterList(mapped);
+          setLoading(false);
+        });
+
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load data.");
+        setLoading(false);
+      }
+    };
+
+    init();
+    return () => unsubscribe && unsubscribe();
+  }, [id, mapMasterList]);
 
   // Timer Logic
   useEffect(() => {
@@ -169,7 +182,7 @@ const EventDetails = () => {
       });
 
       toast.success(`${officerProfile.displayName} marked present!`);
-      loadData();
+      // loadData() no longer needed due to onSnapshot
     } catch (err) {
       console.error(err);
       toast.error("Failed to mark attendance.");
@@ -196,7 +209,6 @@ const EventDetails = () => {
 
       await Promise.all(promises);
       toast.success(`Marked ${promises.length} officers as absent.`);
-      loadData();
     } catch (err) {
       console.error(err);
       toast.error("Failed to batch mark absent.");
@@ -307,7 +319,7 @@ const EventDetails = () => {
                     </DialogHeader>
                     <div className="bg-white p-6 rounded-[24px] shadow-2xl flex items-center justify-center">
                       <QRCode
-                        value={`checkits://meeting/${id}/checkin`}
+                        value={`${window.location.origin}/meeting/${id}/checkin`}
                         size={220}
                         fgColor="#dc2626"
                       />

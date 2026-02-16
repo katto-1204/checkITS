@@ -26,6 +26,8 @@ import { format } from "date-fns";
 import LeaderboardWidget from "@/components/LeaderboardWidget";
 import NextEventCountdown from "@/components/NextEventCountdown";
 import ActivityFeed from "@/components/ActivityFeed";
+import { collection, query, onSnapshot, where, orderBy } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const container = {
   hidden: { opacity: 0 },
@@ -58,26 +60,43 @@ const OfficerDashboard = () => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  const loadData = useCallback(async () => {
-    if (!userProfile) return;
-    try {
-      const [userAttendance, allMeetings] = await Promise.all([
-        getAttendanceForUser(userProfile.uid),
-        getMeetings(),
-      ]);
-      setAttendance(userAttendance);
-      setMeetings(allMeetings);
-    } catch (err) {
-      console.error(err);
-      toast.error("Failed to load data.");
-    } finally {
-      setLoading(false);
-    }
-  }, [userProfile]);
-
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!userProfile) return;
+
+    let unsubscribeMeetings: () => void;
+    let unsubscribeAttendance: () => void;
+
+    const init = async () => {
+      try {
+        const allMeetings = await getMeetings();
+        setMeetings(allMeetings);
+
+        // Real-time meetings
+        const qMeetings = query(collection(db, "meetings"), orderBy("createdAt", "desc"));
+        unsubscribeMeetings = onSnapshot(qMeetings, (snap) => {
+          setMeetings(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Meeting));
+        });
+
+        // Real-time user attendance
+        const qAttendance = query(collection(db, "attendance"), where("userId", "==", userProfile.uid));
+        unsubscribeAttendance = onSnapshot(qAttendance, (snap) => {
+          setAttendance(snap.docs.map(d => ({ id: d.id, ...d.data() }) as AttendanceRecord));
+          setLoading(false);
+        });
+
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to sync dashboard.");
+        setLoading(false);
+      }
+    };
+
+    init();
+    return () => {
+      unsubscribeMeetings?.();
+      unsubscribeAttendance?.();
+    };
+  }, [userProfile]);
 
   const loadMeetingDetails = async (meeting: Meeting) => {
     setSelectedMeeting(meeting);
@@ -217,7 +236,7 @@ const OfficerDashboard = () => {
       });
 
       toast.success(`Marked present for "${selectedMeeting.title}"!`);
-      loadData(); // Reload to update state
+      // loadData() no longer needed
 
       // Update local attendance list in modal
       await loadMeetingDetails(selectedMeeting);
