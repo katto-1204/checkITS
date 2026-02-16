@@ -126,42 +126,50 @@ const Reports = () => {
 
   return (
     <DashboardLayout role="admin">
-      <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
-        <motion.div variants={item} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <motion.div variants={container} initial="hidden" animate="show" className="space-y-10">
+        <motion.div variants={item} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
           <div>
-            <h1 className="text-3xl md:text-4xl font-black">Reports</h1>
-            <p className="text-muted-foreground mt-1">Analytics & performance insights</p>
+            <h1 className="text-4xl md:text-5xl font-[900] tracking-tighter leading-none">
+              Intelligence <span className="text-primary italic">Reports</span>
+            </h1>
+            <p className="text-muted-foreground mt-2 font-medium flex items-center gap-2">
+              <TrendingUp size={16} className="text-primary" />
+              Strategic Data & Performance Insights
+            </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={exportCSV} className="font-semibold">
+            <Button variant="outline" onClick={exportCSV} className="h-10 px-5 rounded-xl font-bold border-2">
               <Download size={16} className="mr-2" />
-              CSV
+              CSV Data
             </Button>
-            <Button onClick={exportPDF} className="font-semibold">
+            <Button onClick={exportPDF} className="h-10 px-6 rounded-xl font-black shadow-lg shadow-primary/10">
               <Download size={16} className="mr-2" />
-              PDF
+              PDF Analytic
             </Button>
           </div>
         </motion.div>
 
-        {/* Summary */}
-        <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-6 text-center">
-              <p className="text-sm text-muted-foreground">Total Meetings</p>
-              <p className="text-3xl font-black">{meetings.length}</p>
+        {/* Summary Grid - High Energy Edition */}
+        <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <Card className="bg-secondary/10 border-none rounded-[24px] overflow-hidden group">
+            <CardContent className="p-8 text-center relative">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary/30 rounded-full group-hover:w-24 transition-all duration-500" />
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-3 opacity-60">Total Sessions</p>
+              <p className="text-5xl font-[900] tracking-tighter">{meetings.length}</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-6 text-center">
-              <p className="text-sm text-muted-foreground">Total Officers</p>
-              <p className="text-3xl font-black">{officerStats.length}</p>
+          <Card className="bg-secondary/10 border-none rounded-[24px] overflow-hidden group">
+            <CardContent className="p-8 text-center relative">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary/30 rounded-full group-hover:w-24 transition-all duration-500" />
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-3 opacity-60">Officer Count</p>
+              <p className="text-5xl font-[900] tracking-tighter">{officerStats.length}</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-6 text-center">
-              <p className="text-sm text-muted-foreground">Avg Attendance</p>
-              <p className="text-3xl font-black">
+          <Card className="bg-primary/5 border-none rounded-[24px] overflow-hidden group border-2 border-primary/10">
+            <CardContent className="p-8 text-center relative">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-primary rounded-full group-hover:w-24 transition-all duration-500 shadow-[0_0_10px_rgba(220,38,38,0.5)]" />
+              <p className="text-[10px] font-bold tracking-wide text-primary mb-3">Global Average</p>
+              <p className="text-5xl font-[900] tracking-tighter text-primary">
                 {officerStats.length > 0
                   ? Math.round(officerStats.reduce((a, b) => a + b.rate, 0) / officerStats.length)
                   : 0}
@@ -171,60 +179,60 @@ const Reports = () => {
           </Card>
         </motion.div>
 
-        {/* Top / Bottom Officers */}
-        <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <TrendingUp size={18} className="text-success" />
-                Most Punctual
+        {/* Analysis Columns */}
+        <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <Card className="bg-secondary/20 border-border/40 rounded-[32px] overflow-hidden shadow-2xl shadow-background">
+            <CardHeader className="p-8 pb-4">
+              <CardTitle className="text-xl font-black flex items-center gap-3 tracking-tight">
+                <div className="w-10 h-10 rounded-xl bg-success/20 flex items-center justify-center text-success">
+                  <TrendingUp size={22} />
+                </div>
+                ELITE PERFORMANCE
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="px-8 pb-8 space-y-4">
               {topOfficers.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No data yet.</p>
+                <p className="text-sm text-muted-foreground opacity-50">Awaiting session data...</p>
               ) : (
                 topOfficers.map((o, i) => (
-                  <div key={o.name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-success/20 text-success text-xs font-bold flex items-center justify-center">
-                        {i + 1}
-                      </span>
+                  <div key={o.name} className="flex items-center justify-between bg-background/40 p-4 rounded-2xl hover:bg-background/60 transition-colors border border-border/20">
+                    <div className="flex items-center gap-4">
+                      <span className="text-2xl font-[900] italic text-success/20">#{i + 1}</span>
                       <div>
-                        <span className="font-medium text-sm">{o.name}</span>
-                        <p className="text-xs text-muted-foreground">{o.events} events</p>
+                        <span className="font-[900] text-lg tracking-tight leading-none mb-1 block">{o.name}</span>
+                        <p className="text-[10px] font-bold tracking-wide text-muted-foreground opacity-60">{o.events} Events Completed</p>
                       </div>
                     </div>
-                    <span className="text-sm font-bold text-success">{o.rate}%</span>
+                    <span className="text-2xl font-[900] text-success tracking-tighter italic">{o.rate}%</span>
                   </div>
                 ))
               )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <TrendingDown size={18} className="text-destructive" />
-                Needs Improvement
+          <Card className="bg-secondary/20 border-border/40 rounded-[32px] overflow-hidden shadow-2xl shadow-background">
+            <CardHeader className="p-8 pb-4">
+              <CardTitle className="text-xl font-black flex items-center gap-3 tracking-tight">
+                <div className="w-10 h-10 rounded-xl bg-destructive/20 flex items-center justify-center text-destructive">
+                  <TrendingDown size={22} />
+                </div>
+                CRITICAL MONITORING
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="px-8 pb-8 space-y-4">
               {bottomOfficers.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No data yet.</p>
+                <p className="text-sm text-muted-foreground opacity-50">Data pipeline inactive.</p>
               ) : (
                 bottomOfficers.map((o, i) => (
-                  <div key={o.name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-destructive/20 text-destructive text-xs font-bold flex items-center justify-center">
-                        {i + 1}
-                      </span>
+                  <div key={o.name} className="flex items-center justify-between bg-background/40 p-4 rounded-2xl hover:bg-background/60 transition-colors border border-border/20">
+                    <div className="flex items-center gap-4">
+                      <span className="text-2xl font-[900] italic text-destructive/20">#{i + 1}</span>
                       <div>
-                        <span className="font-medium text-sm">{o.name}</span>
-                        <p className="text-xs text-muted-foreground">{o.events} events</p>
+                        <span className="font-[900] text-lg tracking-tight leading-none mb-1 block">{o.name}</span>
+                        <p className="text-[10px] font-bold tracking-wide text-muted-foreground opacity-60">{o.events} Events Completed</p>
                       </div>
                     </div>
-                    <span className="text-sm font-bold text-destructive">{o.rate}%</span>
+                    <span className="text-2xl font-[900] text-destructive tracking-tighter italic">{o.rate}%</span>
                   </div>
                 ))
               )}
@@ -232,33 +240,35 @@ const Reports = () => {
           </Card>
         </motion.div>
 
-        {/* All Officers */}
+        {/* Complete Directory */}
         {officerStats.length > 0 && (
           <motion.div variants={item}>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-bold">All Officers</CardTitle>
+            <Card className="bg-secondary/10 border-none rounded-[32px] overflow-hidden backdrop-blur-md">
+              <CardHeader className="p-6 sm:p-8 border-b border-border/40">
+                <CardTitle className="text-xl sm:text-2xl font-black tracking-tighter">Personnel Performance Index</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="divide-y divide-border">
+                <div className="divide-y divide-border/20">
                   {officerStats.map((o, i) => (
-                    <div key={`${o.name}-${i}`} className="flex items-center justify-between px-6 py-3">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-bold text-muted-foreground w-6">{i + 1}</span>
-                        <span className="font-medium text-sm">{o.name}</span>
+                    <div key={`${o.name}-${i}`} className="flex flex-col sm:flex-row sm:items-center justify-between px-6 sm:px-8 py-4 sm:py-5 hover:bg-secondary/20 transition-all group gap-2 sm:gap-0">
+                      <div className="flex items-center gap-4 sm:gap-5">
+                        <span className="text-[10px] sm:text-xs font-bold text-muted-foreground w-4 sm:w-6 opacity-40 group-hover:opacity-100 transition-opacity">{(i + 1).toString().padStart(2, '0')}</span>
+                        <span className="font-[900] text-base sm:text-lg tracking-tight group-hover:text-primary transition-colors truncate max-w-[180px] sm:max-w-none">{o.name}</span>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <span className="text-xs text-muted-foreground">{o.events} events</span>
-                        <span
-                          className={`text-sm font-bold ${o.rate >= 80
-                            ? "text-success"
-                            : o.rate >= 50
-                              ? "text-warning"
-                              : "text-destructive"
-                            }`}
-                        >
-                          {o.rate}%
-                        </span>
+                      <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-8 ml-8 sm:ml-0">
+                        <span className="text-[9px] sm:text-[10px] font-bold tracking-wide text-muted-foreground opacity-60">{o.events} Sessions</span>
+                        <div className="w-16 sm:w-24 flex justify-end">
+                          <span
+                            className={`text-lg sm:text-xl font-black tracking-tighter italic ${o.rate >= 80
+                              ? "text-success"
+                              : o.rate >= 50
+                                ? "text-warning"
+                                : "text-destructive"
+                              }`}
+                          >
+                            {o.rate}%
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}

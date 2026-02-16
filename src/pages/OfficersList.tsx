@@ -58,16 +58,26 @@ const OfficersList = () => {
 
                 // Merge Master List with Firestore Users
                 const mergedList: MergedOfficer[] = OFFICERS_2025_2026.map(def => {
-                    // Fuzzy match logic
-                    const user = allUsers.find(u =>
-                        u.displayName.toLowerCase().includes(def.name.toLowerCase()) ||
-                        def.name.toLowerCase().includes(u.displayName.toLowerCase())
-                    );
+                    // Normalize name for better matching: remove middle initials and dots
+                    const normalize = (name: string) =>
+                        name.toLowerCase()
+                            .replace(/[.\s]/g, " ") // replace dots and spaces with single space
+                            .replace(/\b[a-z]\s/g, " ") // remove single letter initials followed by space
+                            .trim()
+                            .split(/\s+/)
+                            .filter(word => word.length > 1); // keep only words longer than 1 char
+
+                    const defParts = normalize(def.name);
+
+                    const user = allUsers.find(u => {
+                        const uParts = normalize(u.displayName);
+                        // Check if all parts of the shorter name are in the longer name
+                        const [smaller, larger] = defParts.length < uParts.length ? [defParts, uParts] : [uParts, defParts];
+                        return smaller.every(part => larger.includes(part));
+                    });
 
                     return {
-                        name: def.name,
-                        position: def.position,
-                        role: def.role,
+                        ...def,
                         userProfile: user || undefined,
                         status: user ? "active" : "no_account"
                     };
@@ -127,64 +137,73 @@ const OfficersList = () => {
 
     return (
         <DashboardLayout role="admin">
-            <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                     <div>
-                        <h1 className="text-3xl font-black">Officers</h1>
-                        <p className="text-muted-foreground">Manage and view officer details</p>
+                        <h1 className="text-3xl sm:text-4xl md:text-5xl font-[900] tracking-tighter leading-none">
+                            Officer <span className="text-primary italic">Roster</span>
+                        </h1>
+                        <p className="text-muted-foreground mt-2 font-medium flex items-center gap-2 text-sm sm:text-base">
+                            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-primary" />
+                            Managed Personnel · {officers.length} Active
+                        </p>
                     </div>
                 </div>
 
-                {/* Filters */}
-                <motion.div variants={item} className="flex flex-col sm:flex-row gap-4 items-center">
+                {/* Filters - Glass Edition */}
+                <motion.div variants={item} className="flex flex-col md:flex-row gap-4 items-center bg-secondary/20 p-4 rounded-[24px] border border-border/40 backdrop-blur-sm">
                     {/* Search */}
-                    <div className="relative flex-1 w-full">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <div className="relative flex-1 w-full group">
+                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
                         <Input
                             placeholder="Search by name, ID, or position..."
-                            className="pl-9 bg-secondary border-transparent focus:bg-background transition-all"
+                            className="pl-12 h-12 bg-background/50 border-transparent focus:bg-background focus:ring-2 focus:ring-primary/20 rounded-xl transition-all font-medium"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
 
-                    {/* School Year Filter */}
-                    <div className="w-full sm:w-48">
-                        <Select value={schoolYearFilter} onValueChange={setSchoolYearFilter}>
-                            <SelectTrigger className="bg-secondary border-transparent text-foreground">
-                                <Filter size={14} className="mr-2 text-muted-foreground" />
-                                <SelectValue placeholder="School Year" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="All">All Years</SelectItem>
-                                {SCHOOL_YEARS.map((sy) => (
-                                    <SelectItem key={sy} value={sy}>{sy}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+                        {/* School Year Filter */}
+                        <div className="w-full sm:w-48">
+                            <Select value={schoolYearFilter} onValueChange={setSchoolYearFilter}>
+                                <SelectTrigger className="h-12 bg-background/50 border-transparent rounded-xl focus:ring-primary/20">
+                                    <div className="flex items-center gap-2">
+                                        <Filter size={14} className="text-muted-foreground" />
+                                        <SelectValue placeholder="School Year" />
+                                    </div>
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border-border/40">
+                                    <SelectItem value="All">All Years</SelectItem>
+                                    {SCHOOL_YEARS.map((sy) => (
+                                        <SelectItem key={sy} value={sy}>{sy}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                    {/* Role Filter */}
-                    <div className="w-full sm:w-48">
-                        <Select value={roleFilter} onValueChange={setRoleFilter}>
-                            <SelectTrigger className="bg-secondary border-transparent text-foreground">
-                                <SelectValue placeholder="All Roles" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="All">All Roles</SelectItem>
-                                <SelectItem value="Executives">Executives</SelectItem>
-                                <SelectItem value="Creatives">Creatives</SelectItem>
-                                <SelectItem value="Logistics">Logistics</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        {/* Role Filter */}
+                        <div className="w-full sm:w-48">
+                            <Select value={roleFilter} onValueChange={setRoleFilter}>
+                                <SelectTrigger className="h-12 bg-background/50 border-transparent rounded-xl focus:ring-primary/20">
+                                    <SelectValue placeholder="All Roles" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border-border/40">
+                                    <SelectItem value="All">All Roles</SelectItem>
+                                    <SelectItem value="Executives">Executives</SelectItem>
+                                    <SelectItem value="Creatives">Creatives</SelectItem>
+                                    <SelectItem value="Logistics">Logistics</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </motion.div>
 
-                {/* List */}
-                <motion.div variants={item} className="grid gap-3">
+                {/* List - Premium Grid */}
+                <motion.div variants={item} className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                     {filteredOfficers.length === 0 ? (
-                        <Card>
-                            <CardContent className="p-8 text-center text-muted-foreground">
+                        <Card className="col-span-full bg-secondary/10 border-dashed border-2 border-border/50 rounded-2xl">
+                            <CardContent className="p-12 text-center text-muted-foreground">
                                 No officers found matching your filters.
                             </CardContent>
                         </Card>
@@ -193,62 +212,60 @@ const OfficersList = () => {
                             <motion.div
                                 key={index}
                                 variants={item}
-                                whileHover={{ scale: 1.01 }}
-                                className={`glass-card rounded-xl p-4 flex items-center justify-between gap-4 border-l-4 ${officer.status === "active" ? "border-l-primary" : "border-l-muted"
-                                    }`}
+                                whileHover={{ scale: 1.02, y: -2 }}
+                                className={`bg-secondary/20 hover:bg-secondary/30 backdrop-blur-sm rounded-[24px] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-5 border border-border/40 hover:border-primary/20 transition-all group relative overflow-hidden`}
                             >
-                                <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg shrink-0 ${officer.userProfile?.photoURL ? "" : "bg-primary/10 text-primary"
+                                <div className="flex items-center gap-4 sm:gap-5 relative z-10">
+                                    <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center font-black text-lg sm:text-xl shrink-0 shadow-inner group-hover:scale-105 transition-transform ${officer.userProfile?.photoURL ? "" : "bg-gradient-to-br from-primary/20 to-primary/5 text-primary"
                                         }`}>
                                         {officer.userProfile?.photoURL ? (
                                             <img
                                                 src={officer.userProfile.photoURL}
                                                 alt={officer.name}
-                                                className="w-full h-full rounded-full object-cover"
+                                                className="w-full h-full rounded-2xl object-cover ring-2 ring-primary/10 shadow-sm"
                                             />
                                         ) : (
                                             officer.name.substring(0, 2).toUpperCase()
                                         )}
                                     </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <p className="font-bold text-lg leading-none">{officer.name}</p>
-                                            {officer.status === "active" ? (
-                                                <CheckCircle2 size={16} className="text-primary" />
-                                            ) : (
-                                                <UserX size={16} className="text-muted-foreground/50" />
+                                    <div className="min-w-0 py-0.5">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <p className="font-[900] text-lg sm:text-xl tracking-tight leading-none truncate">{officer.name}</p>
+                                            {officer.status === "active" && (
+                                                <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(220,38,38,0.5)]" />
                                             )}
                                         </div>
-                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1">
+                                        <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1 text-[10px] sm:text-[11px] text-muted-foreground font-medium tracking-wide opacity-70">
                                             {officer.userProfile?.idNumber ? (
-                                                <span className="font-mono bg-secondary px-1.5 py-0.5 rounded text-foreground font-bold">
-                                                    {officer.userProfile.idNumber}
+                                                <span className="text-primary font-bold">
+                                                    ID {officer.userProfile.idNumber}
                                                 </span>
                                             ) : (
-                                                <span className="font-mono bg-destructive/10 text-destructive px-1.5 py-0.5 rounded font-bold">
-                                                    NO ID
+                                                <span className="text-destructive font-bold">
+                                                    Unregistered
                                                 </span>
                                             )}
-                                            <span>•</span>
-                                            <span className="uppercase tracking-wider font-bold">{officer.role}</span>
-                                            <span className="hidden sm:inline">•</span>
-                                            <span className="first-letter:uppercase">{officer.position}</span>
-                                            <span className="hidden sm:inline">•</span>
-                                            <span>2025-2026</span>
+                                            <span>·</span>
+                                            <span>{officer.role}</span>
+                                            <span className="hidden xs:inline">·</span>
+                                            <span className="truncate">{officer.position}</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="shrink-0">
+                                <div className="shrink-0 relative z-10 self-end sm:self-auto uppercase">
                                     {officer.status === "active" ? (
-                                        <Badge variant="outline" className="border-primary/20 bg-primary/5 text-primary">
-                                            Active
+                                        <Badge variant="outline" className="h-7 sm:h-8 px-3 sm:px-4 rounded-xl border-primary/20 bg-primary/10 text-primary font-bold tracking-wider text-[9px] sm:text-[10px]">
+                                            Verified
                                         </Badge>
                                     ) : (
-                                        <Badge variant="secondary" className="text-muted-foreground">
-                                            No Account
+                                        <Badge variant="secondary" className="h-7 sm:h-8 px-3 sm:px-4 rounded-xl text-muted-foreground font-bold tracking-wider text-[9px] sm:text-[10px] opacity-50">
+                                            Pending
                                         </Badge>
                                     )}
                                 </div>
+
+                                {/* Background Glow */}
+                                <div className={`absolute top-0 right-0 w-32 h-32 blur-[60px] -mr-16 -mt-16 opacity-0 group-hover:opacity-20 transition-opacity duration-700 ${officer.status === "active" ? "bg-primary" : "bg-muted-foreground"}`} />
                             </motion.div>
                         ))
                     )}

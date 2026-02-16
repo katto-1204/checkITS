@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, CheckCircle2, XCircle, Clock, QrCode, FileDown, ScanLine, Edit, UserX, AlertCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, XCircle, Clock, QrCode, FileDown, ScanLine, Edit, UserX, AlertCircle, MapPin, CalendarDays } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import QRCode from "react-qr-code";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -61,16 +61,29 @@ const EventDetails = () => {
 
       // Map Master List to Users and Attendance
       const mapped = OFFICERS_2025_2026.map((def) => {
-        // 1. Find if they have an account (fuzzy match name)
-        const user = allUsers.find(u =>
-          u.displayName.toLowerCase().includes(def.name.toLowerCase()) ||
-          def.name.toLowerCase().includes(u.displayName.toLowerCase())
-        );
+        // Normalize name for better matching: remove middle initials and dots
+        const normalize = (name: string) =>
+          name.toLowerCase()
+            .replace(/[.\s]/g, " ") // replace dots and spaces with single space
+            .replace(/\b[a-z]\s/g, " ") // remove single letter initials followed by space
+            .trim()
+            .split(/\s+/)
+            .filter(word => word.length > 1); // keep only words longer than 1 char
+
+        const defParts = normalize(def.name);
+
+        // 1. Find if they have an account
+        const user = allUsers.find(u => {
+          const uParts = normalize(u.displayName);
+          // Check if all parts of the shorter name are in the longer name
+          const [smaller, larger] = defParts.length < uParts.length ? [defParts, uParts] : [uParts, defParts];
+          return smaller.every(part => larger.includes(part));
+        });
 
         // 2. Find attendance
         const record = user
           ? attendanceData.find(a => a.userId === user.uid)
-          : attendanceData.find(a => a.userDisplayName.toLowerCase() === def.name.toLowerCase());
+          : attendanceData.find(a => normalize(a.userDisplayName).every(p => defParts.includes(p)));
 
         let status = "not_registered"; // Default: Has account but not checked in
         if (!user) status = "no_account"; // No account
@@ -250,61 +263,69 @@ const EventDetails = () => {
     <DashboardLayout role="admin">
       <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 h-[calc(100vh-100px)] flex flex-col">
 
-        {/* Header Section */}
-        <motion.div variants={item} className="flex flex-col gap-4 bg-card border rounded-xl p-6 shadow-sm shrink-0">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        {/* Header Section - Intelligence Briefing Style */}
+        <motion.div variants={item} className="flex flex-col gap-4 sm:gap-6 bg-secondary/20 backdrop-blur-md border border-border/40 rounded-[24px] sm:rounded-[32px] p-6 sm:p-8 shadow-2xl shadow-background shrink-0 relative overflow-hidden">
+          {/* Background Glow */}
+          <div className={`absolute -right-16 -top-16 w-64 h-64 blur-[100px] opacity-20 ${isStarted ? "bg-primary animate-pulse" : "bg-muted-foreground"}`} />
 
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 sm:gap-8 relative z-10">
             {/* Timer & Basic Info */}
-            <div className="flex items-start gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="-ml-2">
-                <ArrowLeft size={24} />
+            <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6 w-full">
+              <Button variant="ghost" size="icon" onClick={() => navigate("/admin")} className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-background/50 hover:bg-background border border-border/40 shrink-0">
+                <ArrowLeft size={20} className="sm:size-24" />
               </Button>
-              <div className="space-y-1">
-                <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-inconsolata font-bold tracking-widest ${isStarted ? "bg-red-500/10 text-red-600 animate-pulse" : "bg-secondary text-muted-foreground"}`}>
-                  <Clock size={16} className="mr-2" />
+              <div className="space-y-2 sm:space-y-3 min-w-0">
+                <div className={`inline-flex items-center px-3 sm:px-4 py-1.5 rounded-full text-[9px] sm:text-[10px] font-bold tracking-wide uppercase ${isStarted ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_15px_rgba(220,38,38,0.2)]" : "bg-secondary text-muted-foreground border border-border/40"}`}>
+                  <Clock size={12} className={`mr-2 ${isStarted ? "animate-spin-slow" : ""}`} />
                   {elapsedTime}
                 </div>
-                <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight leading-none text-primary">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-[900] tracking-tighter leading-none truncate w-full">
                   {meeting.title}
                 </h1>
-                <p className="text-lg text-muted-foreground font-medium flex flex-wrap gap-4">
-                  <span>{meeting.date}</span>
-                  <span className="opacity-30">•</span>
-                  <span>{meeting.time}</span>
-                  <span className="opacity-30">•</span>
-                  <span>{meeting.location}</span>
-                </p>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[10px] sm:text-xs font-medium text-muted-foreground opacity-60">
+                  <span className="flex items-center gap-1.5"><CalendarDays size={12} />{meeting.date}</span>
+                  <span className="opacity-30">/</span>
+                  <span className="flex items-center gap-1.5"><Clock size={12} />{meeting.time}</span>
+                  <span className="opacity-30">/</span>
+                  <span className="flex items-center gap-1.5"><MapPin size={12} />{meeting.location}</span>
+                </div>
               </div>
             </div>
 
             {/* Actions & QR */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 w-full md:w-auto justify-end">
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button size="icon" variant="outline" className="w-12 h-12 rounded-xl">
-                    <QrCode size={24} />
+                  <Button size="icon" variant="outline" className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-background/50 border-2 hover:bg-background transition-all">
+                    <QrCode size={24} className="sm:size-28" />
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-sm">
-                  <DialogHeader>
-                    <DialogTitle className="text-center font-bold">Event QR Code</DialogTitle>
-                  </DialogHeader>
-                  <div className="flex flex-col items-center p-4">
-                    <div className="bg-white p-4 rounded-xl shadow-lg">
-                      <QRCode value={`checkits://meeting/${id}/checkin`} size={250} />
+                <DialogContent className="sm:max-w-sm rounded-[32px] overflow-hidden border-none p-0">
+                  <div className="bg-gradient-to-br from-primary to-primary-foreground p-8">
+                    <DialogHeader className="mb-6">
+                      <DialogTitle className="font-black text-white text-2xl text-center uppercase tracking-tighter">Session Key</DialogTitle>
+                    </DialogHeader>
+                    <div className="bg-white p-6 rounded-[24px] shadow-2xl flex items-center justify-center">
+                      <QRCode
+                        value={`checkits://meeting/${id}/checkin`}
+                        size={220}
+                        fgColor="#dc2626"
+                      />
                     </div>
-                    <p className="mt-4 text-center text-sm text-muted-foreground">Officer Check-in</p>
+                    <p className="text-xs text-white/80 text-center font-black uppercase tracking-widest mt-6">
+                      Officer Secure Access
+                    </p>
                   </div>
                 </DialogContent>
               </Dialog>
 
-              <Button variant="secondary" onClick={() => setScannerOpen(true)} className="h-12 px-6 font-bold text-base">
-                <ScanLine size={18} className="mr-2" />
-                Scan ID
+              <Button onClick={() => setScannerOpen(true)} className="flex-1 md:flex-none h-12 sm:h-14 px-4 sm:px-8 rounded-2xl font-[900] tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all text-[11px] sm:text-sm uppercase">
+                <ScanLine size={18} className="mr-2 sm:mr-3" />
+                CAPTURE ID
               </Button>
 
-              <Button variant="outline" onClick={exportEventPDF} className="h-12 w-12 p-0 rounded-xl">
-                <FileDown size={20} />
+              <Button variant="outline" onClick={exportEventPDF} className="h-12 w-12 sm:h-14 sm:w-14 p-0 rounded-2xl border-2 hover:bg-secondary/50">
+                <FileDown size={20} className="sm:size-24" />
               </Button>
             </div>
           </div>
@@ -314,101 +335,106 @@ const EventDetails = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
 
           {/* LEFT: Pending / Absent / No Account */}
-          <motion.div variants={item} className="flex flex-col gap-4 bg-muted/30 rounded-xl p-4 border min-h-0 overflow-hidden">
+          <motion.div variants={item} className="flex flex-col gap-6 bg-secondary/10 rounded-[32px] p-6 border border-border/40 min-h-0 overflow-hidden backdrop-blur-sm">
             <div className="flex items-center justify-between shrink-0">
-              <h2 className="text-lg font-black uppercase text-muted-foreground flex items-center gap-2">
-                <UserX size={18} />
-                Expecting ({pendingList.length})
+              <h2 className="text-lg font-[900] uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-3 opacity-60">
+                <UserX size={20} className="text-primary" />
+                EXPECTING · {pendingList.length}
               </h2>
               {pendingList.length > 0 && (
                 <Button
                   variant="destructive"
                   size="sm"
                   onClick={handleMarkAbsent}
-                  className="text-xs font-bold"
+                  className="h-8 px-4 rounded-lg font-black text-[10px] uppercase tracking-widest"
                 >
-                  Mark All Absent
+                  BATCH ABSENT
                 </Button>
               )}
             </div>
 
-            <div className="overflow-y-auto pr-2 space-y-2 flex-1">
+            <div className="overflow-y-auto pr-2 space-y-3 flex-1 scrollbar-hide">
               {pendingList.map(officer => (
-                <div key={officer.name} className="flex items-center justify-between bg-card p-3 rounded-lg border shadow-sm opacity-80 hover:opacity-100 transition-opacity">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-xs font-bold text-muted-foreground">
+                <div key={officer.name} className="flex items-center justify-between bg-background/40 hover:bg-background/80 p-3 sm:p-4 rounded-2xl border border-border/20 transition-all group">
+                  <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-secondary flex items-center justify-center text-[10px] sm:text-xs font-black text-muted-foreground border border-border/50 group-hover:border-primary/20 transition-colors shrink-0">
                       {officer.name.substring(0, 2).toUpperCase()}
                     </div>
-                    <div>
-                      <p className="font-bold text-sm leading-tight">{officer.name}</p>
-                      <p className="text-[10px] uppercase font-bold text-muted-foreground">{officer.position}</p>
+                    <div className="min-w-0">
+                      <p className="font-[900] text-sm sm:text-base leading-none mb-1 group-hover:text-primary transition-colors truncate">{officer.name}</p>
+                      <p className="text-[9px] sm:text-[10px] font-medium text-muted-foreground opacity-60 truncate">{officer.position}</p>
                     </div>
                   </div>
-                  <div>
+                  <div className="shrink-0 ml-2">
                     {officer.status === "absent" && (
-                      <Badge variant="destructive">Absent</Badge>
+                      <Badge variant="destructive" className="rounded-lg px-2 sm:px-3 py-1 font-black text-[8px] sm:text-[9px]">ABSENT</Badge>
                     )}
                     {officer.status === "no_account" && (
-                      <Badge variant="outline" className="text-muted-foreground border-dashed">No Account</Badge>
+                      <Badge variant="outline" className="rounded-lg px-2 sm:px-3 py-1 text-muted-foreground border-dashed border-2 font-black text-[8px] sm:text-[9px] opacity-40">PENDING</Badge>
                     )}
                     {officer.status === "not_registered" && (
-                      <Badge variant="secondary" className="text-orange-500 bg-orange-500/10 hover:bg-orange-500/20">Pending</Badge>
+                      <Badge variant="secondary" className="rounded-lg px-2 sm:px-3 py-1 text-primary font-black text-[8px] sm:text-[9px] bg-primary/5 border border-primary/10">WAITING</Badge>
                     )}
                   </div>
                 </div>
               ))}
               {pendingList.length === 0 && (
-                <div className="h-32 flex flex-col items-center justify-center text-muted-foreground/50">
-                  <CheckCircle2 size={32} />
-                  <p className="text-sm font-medium mt-2">Everyone is here!</p>
+                <div className="h-full flex flex-col items-center justify-center text-muted-foreground/30 py-12">
+                  <CheckCircle2 size={48} className="mb-4 text-primary opacity-20" />
+                  <p className="text-lg font-black tracking-tight">Mission Accomplished</p>
+                  <p className="text-xs font-bold uppercase tracking-widest">Everyone is Present</p>
                 </div>
               )}
             </div>
           </motion.div>
 
           {/* RIGHT: Present */}
-          <motion.div variants={item} className="flex flex-col gap-4 bg-green-500/5 rounded-xl p-4 border border-green-500/20 min-h-0 overflow-hidden">
-            <div className="flex items-center justify-between shrink-0">
-              <h2 className="text-lg font-black uppercase text-green-700 flex items-center gap-2">
-                <CheckCircle2 size={18} />
-                Present ({presentList.length})
+          <motion.div variants={item} className="flex flex-col gap-6 bg-primary/5 rounded-[32px] p-6 border border-primary/20 min-h-0 overflow-hidden relative backdrop-blur-sm">
+            {/* Background Glow */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-[100px] -mr-32 -mt-32" />
+
+            <div className="flex items-center justify-between shrink-0 relative z-10">
+              <h2 className="text-lg font-[900] uppercase tracking-[0.2em] text-primary flex items-center gap-3">
+                <CheckCircle2 size={20} />
+                CONFIRMED · {presentList.length}
               </h2>
-              <span className="text-xs font-bold text-green-700 bg-green-200 px-2 py-1 rounded-full">
-                {Math.round((presentList.length / masterList.length) * 100) || 0}% Rate
-              </span>
+              <div className="text-[10px] font-black text-primary bg-primary/10 px-4 py-1.5 rounded-full border border-primary/20 tracking-[0.1em] uppercase">
+                {Math.round((presentList.length / masterList.length) * 100) || 0}% ARRIVAL RATE
+              </div>
             </div>
 
-            <div className="overflow-y-auto pr-2 space-y-2 flex-1">
+            <div className="overflow-y-auto pr-2 space-y-3 flex-1 relative z-10 scrollbar-hide">
               {presentList.map(officer => (
-                <div key={officer.name} className="flex items-center justify-between bg-card p-3 rounded-lg border-l-4 border-l-green-500 shadow-sm">
-                  <div className="flex items-center gap-3">
+                <div key={officer.name} className="flex items-center justify-between bg-background/50 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-primary/10 shadow-lg shadow-primary/5 transition-all hover:scale-[1.01] gap-3">
+                  <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
                     {officer.userPhoto ? (
-                      <img src={officer.userPhoto} className="w-10 h-10 rounded-full object-cover bg-secondary" />
+                      <img src={officer.userPhoto} className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover ring-2 ring-primary/10 shrink-0" alt="" />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-green-100 text-green-700 flex items-center justify-center text-xs font-bold">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-[10px] sm:text-sm font-[900] border border-primary/20 shadow-inner shrink-0">
                         {officer.name.substring(0, 2).toUpperCase()}
                       </div>
                     )}
-                    <div>
-                      <p className="font-bold text-sm leading-tight text-foreground">{officer.name}</p>
-                      <p className="text-[10px] uppercase font-bold text-muted-foreground">{officer.position}</p>
+                    <div className="min-w-0">
+                      <p className="font-[900] text-sm sm:text-base leading-none mb-1 truncate">{officer.name}</p>
+                      <p className="text-[9px] sm:text-[10px] font-medium text-muted-foreground opacity-60 truncate">{officer.position}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs font-bold text-green-600 flex items-center gap-1 justify-end">
-                      <Clock size={10} />
+                  <div className="text-right shrink-0">
+                    <p className="text-xs sm:text-sm font-bold text-primary flex items-center gap-1.5 justify-end italic tracking-tighter">
+                      <Clock size={10} className="sm:size-12" />
                       {officer.checkInTime}
                     </p>
-                    <p className="text-[10px] text-muted-foreground font-mono">
-                      {officer.idNumber || "NO ID"}
+                    <p className="text-[9px] sm:text-[10px] text-muted-foreground font-medium opacity-40 mt-1 truncate max-w-[60px] sm:max-w-none">
+                      {officer.idNumber || "Check"}
                     </p>
                   </div>
                 </div>
               ))}
               {presentList.length === 0 && (
-                <div className="h-32 flex flex-col items-center justify-center text-muted-foreground/50">
-                  <AlertCircle size={32} />
-                  <p className="text-sm font-medium mt-2">No check-ins yet.</p>
+                <div className="h-full flex flex-col items-center justify-center text-muted-foreground/30 py-12">
+                  <AlertCircle size={48} className="mb-4 opacity-20" />
+                  <p className="text-lg font-black tracking-tight">System Idle</p>
+                  <p className="text-xs font-bold uppercase tracking-widest">No verified check-ins</p>
                 </div>
               )}
             </div>

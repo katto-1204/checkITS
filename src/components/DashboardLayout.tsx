@@ -58,44 +58,51 @@ const DashboardLayout = ({ children, role: propRole }: DashboardLayoutProps) => 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Brand */}
-      <div className="p-6 border-b border-sidebar-border flex items-center gap-3">
-        <img src="/itslogo.png" alt="Logo" className="w-10 h-10 object-contain drop-shadow-md" />
+      <div className="p-8 pb-6 flex items-center gap-4">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/60 p-0.5 shadow-lg shadow-primary/20">
+          <div className="w-full h-full rounded-[14px] bg-background flex items-center justify-center">
+            <img src="/itslogo.png" alt="Logo" className="w-8 h-8 object-contain" />
+          </div>
+        </div>
         <div>
-          <h1 className="text-2xl font-black tracking-tight leading-none">
-            Check<span className="text-gradient">ITS</span>
+          <h1 className="text-2xl font-[900] tracking-tighter leading-none flex items-center gap-1">
+            Check<span className="text-primary italic">ITS</span>
           </h1>
-          <p className="text-xs text-muted-foreground uppercase tracking-widest leading-none mt-1">
-            {role}
+          <p className="text-[11px] text-muted-foreground tracking-[0.1em] font-medium mt-1.5 opacity-70">
+            {role} Portal
           </p>
         </div>
       </div>
 
-      {/* User Info */}
+      {/* User Card - Floating style */}
       {userProfile && (
-        <div className="px-4 py-3 border-b border-sidebar-border">
-          <div className="flex items-center gap-3">
-            {userProfile.photoURL ? (
-              <img
-                src={userProfile.photoURL}
-                alt=""
-                className="w-9 h-9 rounded-full ring-2 ring-primary/30"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
-                {initials}
+        <div className="px-4 py-6">
+          <div className="bg-secondary/30 backdrop-blur-md rounded-2xl p-4 border border-border/50 shadow-sm relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-primary/5 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-150 duration-500" />
+            <div className="flex items-center gap-3 relative z-10">
+              {userProfile.photoURL ? (
+                <img
+                  src={userProfile.photoURL}
+                  alt=""
+                  className="w-10 h-10 rounded-xl ring-2 ring-primary/20 shadow-md"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground text-sm font-black shadow-lg shadow-primary/20">
+                  {initials}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-bold truncate leading-none mb-1">{userProfile.displayName}</p>
+                <p className="text-[10px] text-muted-foreground truncate opacity-80 tracking-wide font-medium">{userProfile.idNumber || "System Admin"}</p>
               </div>
-            )}
-            <div className="min-w-0">
-              <p className="text-sm font-semibold truncate">{userProfile.displayName}</p>
-              <p className="text-xs text-muted-foreground truncate">{userProfile.email}</p>
             </div>
           </div>
         </div>
       )}
 
       {/* Nav Links */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 px-4 py-2 space-y-1.5 scrollbar-hide overflow-y-auto">
         {links.map((link) => (
           <NavLink
             key={link.to}
@@ -103,32 +110,51 @@ const DashboardLayout = ({ children, role: propRole }: DashboardLayoutProps) => 
             end
             onClick={() => setSidebarOpen(false)}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-all duration-200 ${isActive
-                ? "bg-primary text-primary-foreground"
-                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              `group flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all duration-300 relative overflow-hidden ${isActive
+                ? "text-primary shadow-sm shadow-primary/5"
+                : "text-muted-foreground hover:text-foreground hover:bg-secondary/40"
               }`
             }
           >
-            <link.icon size={18} />
-            {link.label}
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <motion.div
+                    layoutId="activeNav"
+                    className="absolute inset-0 bg-primary/10 border-l-4 border-primary z-0"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
+                <link.icon
+                  size={20}
+                  className={`relative z-10 transition-transform duration-300 group-hover:scale-110 ${isActive ? "text-primary" : "text-muted-foreground"}`}
+                />
+                <span className="relative z-10 flex-1">{link.label}</span>
+                {isActive && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-1.5 h-1.5 rounded-full bg-primary relative z-10" />}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
 
-      {/* Theme Toggle + Logout */}
-      <div className="p-4 border-t border-sidebar-border space-y-1">
+      {/* Footer Actions */}
+      <div className="p-4 mt-auto border-t border-border/50 bg-secondary/10 backdrop-blur-sm space-y-2">
         <button
           onClick={toggleTheme}
-          className="flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all w-full"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl text-[11px] font-bold tracking-wide text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-all w-full group"
         >
-          {theme === "dark" ? <Sparkles size={18} /> : <Moon size={18} />}
-          {theme === "dark" ? "Light Mode " : "Dark Mode"}
+          <div className="w-8 h-8 rounded-lg bg-background border border-border flex items-center justify-center group-hover:border-primary/30 group-hover:text-primary transition-colors">
+            {theme === "dark" ? <Sparkles size={16} /> : <Moon size={16} />}
+          </div>
+          {theme === "dark" ? "Light Mode" : "Dark Mode"}
         </button>
         <button
           onClick={handleSignOut}
-          className="flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all w-full"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl text-[11px] font-bold tracking-wide text-muted-foreground hover:text-destructive hover:bg-destructive/5 transition-all w-full group"
         >
-          <LogOut size={18} />
+          <div className="w-8 h-8 rounded-lg bg-background border border-border flex items-center justify-center group-hover:bg-destructive/10 group-hover:border-destructive/30 group-hover:text-destructive transition-colors">
+            <LogOut size={16} />
+          </div>
           Sign Out
         </button>
       </div>
@@ -136,9 +162,9 @@ const DashboardLayout = ({ children, role: propRole }: DashboardLayoutProps) => 
   );
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-64 flex-col bg-sidebar border-r border-sidebar-border fixed inset-y-0 left-0 z-30">
+    <div className="min-h-screen flex bg-background selection:bg-primary/20">
+      {/* Desktop Sidebar - Premium Floating look */}
+      <aside className="hidden lg:flex w-72 flex-col bg-background border-r border-border/40 fixed inset-y-0 left-0 z-30 shadow-[10px_0_30px_-15px_rgba(0,0,0,0.05)]">
         <SidebarContent />
       </aside>
 
@@ -150,15 +176,15 @@ const DashboardLayout = ({ children, role: propRole }: DashboardLayoutProps) => 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
+              className="fixed inset-0 bg-background/60 backdrop-blur-md z-40 lg:hidden"
               onClick={() => setSidebarOpen(false)}
             />
             <motion.aside
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 w-64 bg-sidebar border-r border-sidebar-border z-50 lg:hidden"
+              transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+              className="fixed inset-y-0 left-0 w-72 bg-background border-r border-border z-50 lg:hidden shadow-2xl"
             >
               <SidebarContent />
             </motion.aside>
@@ -167,28 +193,32 @@ const DashboardLayout = ({ children, role: propRole }: DashboardLayoutProps) => 
       </AnimatePresence>
 
       {/* Main Content */}
-      <div className="flex-1 lg:ml-64">
-        {/* Top Bar */}
-        <header className="sticky top-0 z-20 bg-background/80 backdrop-blur-md border-b border-border px-4 lg:px-8 h-16 flex items-center justify-between">
+      <div className="flex-1 lg:ml-72 transition-all duration-300">
+        {/* Top Bar - Clean & Floating */}
+        <header className="sticky top-0 z-20 bg-background/60 backdrop-blur-xl border-b border-border/40 px-4 lg:px-10 h-20 flex items-center justify-between">
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="lg:hidden hover:bg-secondary/60 rounded-xl w-10 h-10"
             onClick={() => setSidebarOpen(true)}
           >
-            <Menu size={22} />
+            <Menu size={20} />
           </Button>
 
-          <div className="flex items-center gap-3 ml-auto">
+          <div className="flex items-center gap-3 lg:gap-4 ml-auto">
+            <div className="hidden sm:flex flex-col items-end mr-2">
+              <span className="text-[10px] font-bold tracking-wide text-primary leading-none mb-1">Authenticated</span>
+              <span className="text-[9px] text-muted-foreground font-medium tracking-tight opacity-70">CheckITS Terminal</span>
+            </div>
             {userProfile?.photoURL ? (
               <img
                 src={userProfile.photoURL}
                 alt=""
-                className="w-8 h-8 rounded-full ring-2 ring-primary/20"
+                className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl ring-2 ring-primary/10 shadow-sm"
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
+              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-secondary flex items-center justify-center text-foreground text-[10px] font-black border border-border">
                 {initials}
               </div>
             )}
@@ -196,7 +226,7 @@ const DashboardLayout = ({ children, role: propRole }: DashboardLayoutProps) => 
         </header>
 
         {/* Page Content */}
-        <main className="p-4 lg:p-8">
+        <main className="p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto">
           {children}
         </main>
       </div>

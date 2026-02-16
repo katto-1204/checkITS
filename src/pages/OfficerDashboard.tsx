@@ -168,9 +168,9 @@ const OfficerDashboard = () => {
   const handleScanMeetingQR = async (data: string) => {
     if (!userProfile) return;
     try {
-      // data format: checkits://meeting/{meetingId}/checkin
-      const match = data.match(/checkits:\/\/meeting\/(.+)\/checkin/);
-      const meetingId = match ? match[1] : data;
+      // Support both deep link (checkits://meeting/{id}/checkin) and web URL ({origin}/admin/event/{id}/checkin)
+      const match = data.match(/meeting\/(.+)\/checkin/);
+      const meetingId = match ? match[1].split('/')[0] : data;
 
       const meeting = meetings.find((m) => m.id === meetingId);
       if (!meeting) {
@@ -257,7 +257,28 @@ const OfficerDashboard = () => {
   const upcomingDays = meetings
     .filter((m) => {
       const d = new Date(m.date);
-      return d.getMonth() === month && d.getFullYear() === year && d >= now;
+      // Robust "is future or today" check: if event is today but after 'now', it's upcoming
+      const dateTimeStr = m.time ? `${m.date}T${m.time}` : `${m.date}T00:00:00`;
+      const isFutureOrToday = new Date(dateTimeStr) >= now;
+      return d.getMonth() === month && d.getFullYear() === year && isFutureOrToday;
+    })
+    .filter((m) => {
+      // Only "upcoming" if not already checked in
+      const record = attendance.find((a) => a.meetingId === m.id);
+      return !record || record.status !== "present";
+    })
+    .map((m) => new Date(m.date).getDate());
+
+  const absentDays = meetings
+    .filter((m) => {
+      const d = new Date(m.date);
+      const dateTimeStr = m.time ? `${m.date}T${m.time}` : `${m.date}T23:59:00`;
+      const isPast = new Date(dateTimeStr) < now;
+      return d.getMonth() === month && d.getFullYear() === year && isPast;
+    })
+    .filter((m) => {
+      const record = attendance.find((a) => a.meetingId === m.id);
+      return !record || record.status !== "present";
     })
     .map((m) => new Date(m.date).getDate());
 
@@ -277,81 +298,8 @@ const OfficerDashboard = () => {
     <DashboardLayout role="officer">
       <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 lg:grid-cols-4 gap-8 pb-10">
 
-        {/* -------------------------------
-            LEFT COLUMN (Sidebar)
-            Leaderboard, Calendar, Badges
-           ------------------------------- */}
-        <motion.div variants={itemAnim} className="lg:col-span-1 space-y-6 order-2 lg:order-1">
-          {/* Leaderboard Widget */}
-          <LeaderboardWidget />
-
-          {/* Calendar Widget */}
-          <Card className="glass-card bg-black/20 backdrop-blur-md border-none">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                {format(now, "MMMM yyyy")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-7 gap-2 text-center mb-2">
-                {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
-                  <span key={i} className="text-[10px] font-bold text-muted-foreground">{d}</span>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-2 text-center">
-                {calDays.map((day, i) => {
-                  const isPresent = day && presentDays.includes(day);
-                  const isUpcoming = day && upcomingDays.includes(day);
-                  const isToday = day === today;
-
-                  return (
-                    <div
-                      key={i}
-                      className={`aspect-square flex items-center justify-center rounded-lg text-sm font-bold transition-all
-                        ${day === null ? "" :
-                          isToday ? "bg-primary text-primary-foreground shadow-lg shadow-primary/40 scale-110" :
-                            isPresent ? "bg-green-500 text-white shadow-md shadow-green-500/20" :
-                              isUpcoming ? "border-2 border-primary text-primary" :
-                                "text-muted-foreground/60 hover:bg-white/5 hover:text-foreground"
-                        }
-                      `}
-                    >
-                      {day}
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Badges Collection */}
-          <Card className="glass-card bg-black/20 backdrop-blur-md border-none">
-            <CardHeader>
-              <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Badges Earned</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-3">
-                {badges.map(b => {
-                  const earned = presentCount >= b.threshold;
-                  return (
-                    <div key={b.name} className={`group flex flex-col items-center p-3 rounded-xl text-center transition-all ${earned ? "hover:bg-white/5 opacity-100" : "opacity-20 grayscale"}`}>
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 shadow-lg transition-transform group-hover:scale-110 ${earned ? "bg-gradient-to-br from-yellow-400 to-amber-600 text-white" : "bg-white/10"}`}>
-                        <b.icon size={18} />
-                      </div>
-                      <span className="text-[10px] font-bold leading-tight uppercase tracking-wide">{b.name}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* -------------------------------
-            RIGHT COLUMN (Main Content)
-            Hero, Stats (2x2), Agenda + Activity
-           ------------------------------- */}
-        <div className="lg:col-span-3 space-y-8 order-1 lg:order-2">
+        {/* --- MAIN CONTENT (3 Columns) --- */}
+        <div className="lg:col-span-3 space-y-8">
 
           {/* 1. Hero / Welcome Section + Next Event Countdown */}
           <motion.div variants={itemAnim} className="space-y-6">
@@ -379,7 +327,7 @@ const OfficerDashboard = () => {
                     <div className="flex flex-col items-center gap-8 py-10 px-4">
                       <div className="bg-white p-8 rounded-3xl shadow-2xl shadow-primary/20">
                         <QRCode
-                          value={`checkits://officer/${userProfile?.uid}`}
+                          value={`${window.location.origin}/officer/${userProfile?.uid}`}
                           size={240}
                         />
                       </div>
@@ -400,35 +348,32 @@ const OfficerDashboard = () => {
               </div>
             </div>
 
-            {/* Next Event Countdown */}
             <NextEventCountdown meetings={meetings} />
           </motion.div>
 
-          {/* 2. Stats Grid (2x2) */}
-          <motion.div variants={itemAnim} className="grid grid-cols-2 gap-3 md:gap-4">
+          {/* 2. Stats Grid */}
+          <motion.div variants={itemAnim} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {stats.map((s) => (
-              <Card key={s.label} className="glass-card border-l-4 border-l-primary/50 hover:bg-secondary/20 transition-colors">
-                <CardContent className="p-4 md:p-5 flex items-center justify-between">
+              <Card key={s.label} className="glass-card border-l-2 border-l-primary/50 hover:bg-secondary/20 transition-colors">
+                <CardContent className="p-3 flex items-center justify-between">
                   <div>
                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">{s.label}</p>
-                    <p className="text-2xl md:text-3xl font-black">{s.value}</p>
+                    <p className="text-xl font-black">{s.value}</p>
                   </div>
-                  <div className={`p-2 md:p-3 rounded-xl bg-secondary/30 ${s.color}`}>
-                    <s.icon className="w-5 h-5 md:w-6 md:h-6" />
+                  <div className={`p-2 rounded-lg bg-secondary/30 ${s.color}`}>
+                    <s.icon size={16} />
                   </div>
                 </CardContent>
               </Card>
             ))}
-
-            {/* Featured Badge (Current Rank) - 4th Item for 2x2 grid */}
             <Card className="glass-card bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-500/20">
-              <CardContent className="p-4 md:p-5 flex items-center gap-3 md:gap-4">
-                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
-                  <Trophy className="w-5 h-5 md:w-6 md:h-6" />
+              <CardContent className="p-3 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg">
+                  <Trophy size={16} />
                 </div>
                 <div>
                   <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mb-1">Rank</p>
-                  <p className="text-lg md:text-xl font-black leading-tight">
+                  <p className="text-base font-black leading-tight">
                     {badges.slice().reverse().find(b => presentCount >= b.threshold)?.name || "Rookie"}
                   </p>
                 </div>
@@ -436,75 +381,111 @@ const OfficerDashboard = () => {
             </Card>
           </motion.div>
 
-          {/* 3. Agenda and Activity Feed (Side-by-Side) */}
-          <motion.div variants={itemAnim} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
-            {/* Agenda Left */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-black flex items-center gap-3">
-                  <CalendarDays className="text-primary" size={24} />
-                  Your Agenda
-                </h2>
-              </div>
-
-              {/* Agenda List */}
-              <div className="space-y-4">
-                {sortedEvents.length === 0 ? (
-                  <div className="text-center py-16 border-2 border-dashed border-white/10 rounded-2xl bg-white/5">
-                    <p className="text-muted-foreground font-medium">No events found yet.</p>
+          {/* 3. Your Agenda Section */}
+          <div className="space-y-6">
+            <h2 className="text-2xl font-black flex items-center gap-3">
+              <CalendarDays className="text-primary" size={24} />
+              Meetings
+            </h2>
+            <div className="space-y-4">
+              {sortedEvents.length === 0 ? (
+                <div className="text-center py-16 border-2 border-dashed border-white/10 rounded-2xl bg-white/5">
+                  <p className="text-muted-foreground font-medium">No events found yet.</p>
+                </div>
+              ) : sortedEvents.map((event) => (
+                <motion.div
+                  key={event.id}
+                  whileHover={{ scale: 1.01, x: 4 }}
+                  onClick={() => loadMeetingDetails(event)}
+                  className={`group relative overflow-hidden rounded-2xl border-none cursor-pointer transition-all bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg ${event.isPast ? "opacity-60" : ""}`}
+                >
+                  {/* Background decoration */}
+                  <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                    <CalendarDays size={120} />
                   </div>
-                ) : sortedEvents.map((event) => (
-                  <motion.div
-                    key={event.id}
-                    whileHover={{ scale: 1.02, y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => loadMeetingDetails(event)}
-                    className={`group relative overflow-hidden rounded-2xl border p-5 cursor-pointer transition-all shadow-sm hover:shadow-xl bg-card/50 backdrop-blur-sm ${event.isPast ? "opacity-60 grayscale hover:grayscale-0 hover:opacity-100" : "border-primary/30"
-                      }`}
-                  >
-                    <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                    <div className="flex flex-col h-full justify-between gap-4">
-                      <div className="flex justify-between items-start">
-                        <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-bold shadow-inner ${event.isPast ? "bg-secondary text-muted-foreground" : "bg-primary text-primary-foreground"}`}>
-                          <span className="text-[10px] uppercase leading-none opacity-80">{format(new Date(event.date), "MMM")}</span>
-                          <span className="text-2xl leading-none">{format(new Date(event.date), "d")}</span>
-                        </div>
-
-                        {event.status === "present" ? (
-                          <div className="bg-green-500 text-white p-1.5 rounded-full shadow-lg shadow-green-500/20">
-                            <CheckCircle2 size={16} />
-                          </div>
-                        ) : event.status === "absent" ? (
-                          <div className="bg-red-500 text-white p-1.5 rounded-full shadow-lg shadow-red-500/20">
-                            <XCircle size={16} />
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <div>
-                        <h3 className="font-bold text-lg leading-snug line-clamp-2 group-hover:text-primary transition-colors">{event.title}</h3>
-                        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-3 font-medium">
-                          <span className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md"><Clock size={12} /> {event.time}</span>
-                          <span className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md"><MapPin size={12} /> {event.location}</span>
-                        </div>
+                  <div className="p-8 relative z-10 flex items-center gap-8">
+                    <div className={`w-16 h-16 rounded-2xl flex flex-col items-center justify-center font-bold shrink-0 ${event.isPast ? "bg-white/10" : "bg-white/20"}`}>
+                      <span className="text-xs uppercase leading-none opacity-80">{format(new Date(event.date), "MMM")}</span>
+                      <span className="text-4xl leading-none mt-1">{format(new Date(event.date), "d")}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-2xl leading-snug truncate group-hover:text-white/90 transition-colors uppercase tracking-tight">{event.title}</h3>
+                      <div className="flex gap-6 text-sm text-blue-100 mt-2 font-medium">
+                        <span className="flex items-center gap-2"><Clock size={16} /> {event.time}</span>
+                        <span className="flex items-center gap-2"><MapPin size={16} /> {event.location}</span>
                       </div>
                     </div>
-                  </motion.div>
-                ))}
-              </div>
+                    <div className="flex items-center gap-4">
+                      {event.status === "present" && <CheckCircle2 className="text-green-400 shrink-0" size={24} />}
+                      <ChevronRight className="text-white/30 group-hover:translate-x-1 transition-transform" size={24} />
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </div>
-
-            {/* Activity Feed Right */}
-            <div>
-              <ActivityFeed attendance={attendance} meetings={meetings} />
-            </div>
-
-          </motion.div>
-
+          </div>
         </div>
 
+        {/* --- SIDEBAR (1 Column) --- */}
+        <div className="lg:col-span-1 space-y-6">
+          <LeaderboardWidget />
+
+          <Card className="glass-card bg-black/20 border-none">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                {format(now, "MMMM yyyy")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                {["S", "M", "T", "W", "T", "F", "S"].map(d => (
+                  <span key={d} className="text-[9px] font-bold text-muted-foreground/50">{d}</span>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1 text-center">
+                {calDays.map((day, i) => {
+                  const isPresent = day && presentDays.includes(day);
+                  const isUpcoming = day && upcomingDays.includes(day);
+                  const isAbsent = day && absentDays.includes(day);
+                  const isToday = day === today;
+
+                  let dayStyles = "text-muted-foreground/30";
+                  if (isPresent) dayStyles = "bg-green-500 text-white shadow-lg shadow-green-500/20";
+                  else if (isAbsent) dayStyles = "bg-red-500 text-white shadow-lg shadow-red-500/20";
+                  else if (isUpcoming) dayStyles = "border-2 border-red-500/50 text-red-500";
+                  else if (isToday) dayStyles = "bg-primary text-white shadow-lg shadow-primary/20";
+
+                  return (
+                    <div key={i} className={`h-8 flex items-center justify-center rounded-lg text-xs font-black transition-all ${dayStyles}`}>
+                      {day}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card bg-black/20 border-none">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Badges</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-3 gap-2">
+              {badges.map(b => (
+                <div key={b.name} className={`flex flex-col items-center p-2 rounded-xl text-center ${presentCount >= b.threshold ? "opacity-100" : "opacity-20 grayscale"}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${presentCount >= b.threshold ? "bg-primary/20 text-primary" : "bg-white/5"}`}>
+                    <b.icon size={14} />
+                  </div>
+                  <span className="text-[8px] font-bold uppercase truncate w-full">{b.name}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+          <div className="space-y-4">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground px-1">Recent Activity</h3>
+            <ActivityFeed attendance={attendance} meetings={meetings} />
+          </div>
+        </div>
       </motion.div>
 
       {/* Event Details Dialog */}
@@ -575,7 +556,8 @@ const OfficerDashboard = () => {
                   return (
                     <Button
                       onClick={markSelfAttendance}
-                      className="bg-primary text-primary-foreground h-12 px-8 rounded-xl font-bold text-lg shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform"
+                      variant="outline"
+                      className="h-10 px-8 rounded-xl font-bold transition-all"
                     >
                       Check In
                     </Button>
