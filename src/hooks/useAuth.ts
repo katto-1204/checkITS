@@ -16,7 +16,7 @@ export interface AuthContextValue {
     userProfile: UserProfile | null;
     loading: boolean;
     signInWithGoogle: () => Promise<void>;
-    signInWithEmail: (email: string, password: string) => Promise<void>;
+    signInWithEmail: (email: string, password: string, verificationEmail?: string) => Promise<void>;
     registerWithEmail: (data: RegisterData & { role: "admin" | "officer" }) => Promise<void>;
     signOut: () => Promise<void>;
     refreshProfile: () => Promise<void>;

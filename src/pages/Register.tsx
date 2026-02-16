@@ -93,7 +93,7 @@ const Register = () => {
             return;
         }
 
-        if (!formData.email.endsWith("@hcdc.edu.ph")) {
+        if (role === "officer" && !formData.email.endsWith("@hcdc.edu.ph")) {
             setError("Please use your @hcdc.edu.ph institutional email.");
             return;
         }
@@ -109,7 +109,7 @@ const Register = () => {
             return;
         }
 
-        if (!formData.idNumber.startsWith("598")) {
+        if (role === "officer" && !formData.idNumber.startsWith("598")) {
             setError("ID Number must start with '598'.");
             return;
         }
@@ -223,24 +223,24 @@ const Register = () => {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="idNumber">ID Number</Label>
+                                <Label htmlFor="idNumber">ID Number {role === "admin" && "(Optional)"}</Label>
                                 <Input
                                     id="idNumber"
                                     name="idNumber"
-                                    placeholder="e.g. 59800000"
+                                    placeholder={role === "admin" ? "Leave blank if none" : "e.g. 59800000"}
                                     value={formData.idNumber}
                                     onChange={handleChange}
                                     className="bg-secondary border-border"
-                                    required
+                                    required={role === "officer"}
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="email">School Email</Label>
+                                <Label htmlFor="email">{role === "admin" ? "Email Address" : "School Email"}</Label>
                                 <Input
                                     id="email"
                                     name="email"
                                     type="email"
-                                    placeholder="e.g. your.name@hcdc.edu.ph"
+                                    placeholder={role === "admin" ? "e.g. admin@gmail.com" : "your.name@hcdc.edu.ph"}
                                     value={formData.email}
                                     onChange={handleChange}
                                     className="bg-secondary border-border"

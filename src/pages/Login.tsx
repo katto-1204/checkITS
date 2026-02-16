@@ -6,21 +6,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
-import { getUserByIdNumber } from "@/lib/firestore";
 
 const Login = () => {
   const navigate = useNavigate();
   const { firebaseUser, userProfile, loading, signInWithGoogle, signInWithEmail } = useAuth();
   const [isSigningIn, setIsSigningIn] = useState(false);
-  const [email, setEmail] = useState("");
+  const [emailIdentifier, setEmailIdentifier] = useState("");
+  const [secondaryEmail, setSecondaryEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isAdminLogin, setIsAdminLogin] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
-    if (!loading && firebaseUser && userProfile) {
-      navigate(userProfile.role === "admin" ? "/admin" : "/officer", { replace: true });
+    if (!loading && firebaseUser) {
+      if (!userProfile) {
+        navigate("/profile", { replace: true });
+      } else {
+        navigate(userProfile.role === "admin" ? "/admin" : "/officer", { replace: true });
+      }
     }
   }, [loading, firebaseUser, userProfile, navigate]);
 
@@ -35,40 +39,16 @@ const Login = () => {
     setIsSigningIn(true);
 
     try {
-      let loginEmail = email;
-
-      // 1. If using ID Number (no @), check Firestore first
-      if (!email.includes("@")) {
-        try {
-          const user = await getUserByIdNumber(email);
-
-          if (!user) {
-            // User does ONLY exist if they have a Firestore profile
-            // If checking by ID and no profile found -> Show "No Account" modal immediately
-            setNoAccountOpen(true);
-            setIsSigningIn(false);
-            return;
-          }
-
-          // User found, proceed to auth with their email
-          loginEmail = user.email;
-
-        } catch (idErr) {
-          // Check failed (likely network or permissions), might be risky to show "No Account" 
-          // but we'll fall through to normal auth as backup
-          console.warn("ID lookup failed:", idErr);
-          // Default construct email if lookup fails
-          loginEmail = `${email}@checkits.local`;
-        }
+      let authEmail = "";
+      if (isAdminLogin) {
+        authEmail = emailIdentifier.includes("@") ? emailIdentifier : `${emailIdentifier.trim()}@checkits.local`;
+      } else {
+        authEmail = `${emailIdentifier.trim()}@checkits.local`;
       }
 
-      // 2. Attempt Sign In
-      // At this point, we either have a valid email from Firestore OR we are trying a direct email login
-      await signInWithEmail(loginEmail, password);
-
+      await signInWithEmail(authEmail, password, isAdminLogin ? undefined : secondaryEmail);
     } catch (err: any) {
       console.error("Login flow caught error:", err);
-      // AuthContext handles most toasts, but we can verify if simple retry needed
     } finally {
       setIsSigningIn(false);
     }
@@ -84,7 +64,6 @@ const Login = () => {
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="w-full max-w-md"
       >
-        {/* Logo / Brand */}
         <div className="text-center mb-10 flex flex-col items-center">
           <motion.img
             src="/itslogo.png"
@@ -108,14 +87,12 @@ const Login = () => {
           </motion.div>
         </div>
 
-        {/* Login Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.4 }}
           className="glass-card rounded-lg p-8 relative overflow-hidden"
         >
-          {/* Admin Indicator/Banner */}
           {isAdminLogin && (
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-orange-500" />
           )}
@@ -124,7 +101,7 @@ const Login = () => {
             <div>
               <h2 className="text-xl font-bold">{isAdminLogin ? "Admin Login" : "Officer Login"}</h2>
               <p className="text-sm text-muted-foreground">
-                {isAdminLogin ? "Enter Admin Credentials" : "Enter your ID Number"}
+                {isAdminLogin ? "Enter Admin Credentials" : "Enter your ID & School Email"}
               </p>
             </div>
             <Button
@@ -137,20 +114,39 @@ const Login = () => {
             </Button>
           </div>
 
-          {/* ID Number + Password Form */}
           <form onSubmit={handleEmailLogin} className="space-y-4 mb-5">
             <div className="space-y-2">
-              <Label htmlFor="email">{isAdminLogin ? "Username" : "ID Number"}</Label>
+              <Label htmlFor="identifier">{isAdminLogin ? "Username / Email" : "ID Number"}</Label>
               <Input
-                id="email"
+                id="identifier"
                 type="text"
                 placeholder={isAdminLogin ? "admin" : "e.g. 59800000"}
-                value={email}
-                onChange={(e) => setEmail(e.target.value.trim())}
+                value={emailIdentifier}
+                onChange={(e) => setEmailIdentifier(e.target.value.trim())}
                 className="bg-secondary border-border"
                 required
               />
             </div>
+
+            {!isAdminLogin && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="space-y-2"
+              >
+                <Label htmlFor="secondaryEmail">School Email</Label>
+                <Input
+                  id="secondaryEmail"
+                  type="email"
+                  placeholder="your.name@hcdc.edu.ph"
+                  value={secondaryEmail}
+                  onChange={(e) => setSecondaryEmail(e.target.value.trim().toLowerCase())}
+                  className="bg-secondary border-border"
+                  required
+                />
+              </motion.div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
@@ -190,14 +186,12 @@ const Login = () => {
             </Button>
           </form>
 
-          {/* Divider */}
           <div className="flex items-center gap-3 mb-5">
             <div className="flex-1 h-px bg-border" />
             <span className="text-xs text-muted-foreground">OR</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
-          {/* Google Sign-in */}
           <Button
             variant="secondary"
             className="w-full h-11 font-semibold"
@@ -217,7 +211,6 @@ const Login = () => {
             Log in with your <span className="font-bold">ID Number</span> or <span className="font-bold">School Email</span>.
           </p>
 
-          {/* Create Account Link */}
           <p className="text-center text-sm text-muted-foreground mt-6">
             Don't have an account?{" "}
             <Link
@@ -230,7 +223,6 @@ const Login = () => {
         </motion.div>
       </motion.div>
 
-      {/* No Account Found Modal */}
       {noAccountOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <motion.div

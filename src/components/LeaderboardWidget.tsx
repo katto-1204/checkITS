@@ -37,10 +37,22 @@ const LeaderboardWidget = () => {
                 );
 
                 // Sort descending
-                const sorted = stats.sort((a, b) => b.count - a.count);
+                const sortedAll = stats.sort((a, b) => b.count - a.count);
 
-                // Top 5
-                const top5 = sorted.slice(0, 5).map((entry, index) => ({
+                // Deduplicate by name — handle cases where a user might have multiple accounts
+                const uniqueLeaders: (typeof stats[0])[] = [];
+                const seenNames = new Set<string>();
+
+                for (const entry of sortedAll) {
+                    if (!seenNames.has(entry.displayName)) {
+                        seenNames.add(entry.displayName);
+                        uniqueLeaders.push(entry);
+                    }
+                    if (uniqueLeaders.length >= 5) break;
+                }
+
+                // Map rank
+                const top5 = uniqueLeaders.map((entry, index) => ({
                     ...entry,
                     rank: index + 1
                 }));

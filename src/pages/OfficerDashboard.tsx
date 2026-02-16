@@ -405,16 +405,16 @@ const OfficerDashboard = () => {
           </motion.div>
 
           {/* 2. Stats Grid (2x2) */}
-          <motion.div variants={itemAnim} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <motion.div variants={itemAnim} className="grid grid-cols-2 gap-3 md:gap-4">
             {stats.map((s) => (
               <Card key={s.label} className="glass-card border-l-4 border-l-primary/50 hover:bg-secondary/20 transition-colors">
-                <CardContent className="p-5 flex items-center justify-between">
+                <CardContent className="p-4 md:p-5 flex items-center justify-between">
                   <div>
                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">{s.label}</p>
-                    <p className="text-3xl font-black">{s.value}</p>
+                    <p className="text-2xl md:text-3xl font-black">{s.value}</p>
                   </div>
-                  <div className={`p-3 rounded-xl bg-secondary/30 ${s.color}`}>
-                    <s.icon size={24} />
+                  <div className={`p-2 md:p-3 rounded-xl bg-secondary/30 ${s.color}`}>
+                    <s.icon className="w-5 h-5 md:w-6 md:h-6" />
                   </div>
                 </CardContent>
               </Card>
@@ -422,13 +422,13 @@ const OfficerDashboard = () => {
 
             {/* Featured Badge (Current Rank) - 4th Item for 2x2 grid */}
             <Card className="glass-card bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-500/20">
-              <CardContent className="p-5 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
-                  <Trophy size={24} />
+              <CardContent className="p-4 md:p-5 flex items-center gap-3 md:gap-4">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                  <Trophy className="w-5 h-5 md:w-6 md:h-6" />
                 </div>
                 <div>
-                  <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mb-1">Current Rank</p>
-                  <p className="text-xl font-black leading-tight">
+                  <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mb-1">Rank</p>
+                  <p className="text-lg md:text-xl font-black leading-tight">
                     {badges.slice().reverse().find(b => presentCount >= b.threshold)?.name || "Rookie"}
                   </p>
                 </div>
@@ -555,7 +555,12 @@ const OfficerDashboard = () => {
             {selectedMeeting && (
               (() => {
                 const isRegistered = attendance.some(a => a.meetingId === selectedMeeting.id && a.status === "present");
-                const isUpcoming = new Date(selectedMeeting.date) >= new Date();
+
+                // Fix: Compare dates without time to allow check-in on the day of the meeting
+                const meetingDate = new Date(selectedMeeting.date);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const isTodayOrFuture = meetingDate >= today;
 
                 if (isRegistered) {
                   return (
@@ -566,10 +571,13 @@ const OfficerDashboard = () => {
                   );
                 }
 
-                if (isUpcoming) {
+                if (isTodayOrFuture) {
                   return (
-                    <Button onClick={markSelfAttendance} className="bg-primary text-primary-foreground">
-                      Mark as Attended
+                    <Button
+                      onClick={markSelfAttendance}
+                      className="bg-primary text-primary-foreground h-12 px-8 rounded-xl font-bold text-lg shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform"
+                    >
+                      Check In
                     </Button>
                   )
                 }

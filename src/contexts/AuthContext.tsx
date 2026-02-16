@@ -34,8 +34,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     setUserProfile(profile);
                 } catch (error) {
                     console.error("Error fetching user profile:", error);
-                    // If we can't read the profile (e.g. permissions or doesn't exist), 
-                    // we'll treat them as having no profile yet.
                     setUserProfile(null);
                 }
             } else {
@@ -90,32 +88,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const signInWithEmail = async (identifier: string, password: string) => {
+    const signInWithEmail = async (identifier: string, password: string, verificationEmail?: string) => {
         try {
-            // Check if identifier is an email, otherwise treat as ID number
             const email = identifier.includes("@") ? identifier : `${identifier}@checkits.local`;
 
             const result = await signInWithEmailAndPassword(auth, email, password);
             const profile = await getUser(result.user.uid);
 
             if (!profile) {
+                console.warn("User signed in but has no Firestore profile.");
+            } else if (verificationEmail && profile.email.toLowerCase() !== verificationEmail.toLowerCase()) {
                 await firebaseSignOut(auth);
-                // Throw specific error for UI to handle
-                throw new Error("NO_PROFILE");
+                throw new Error("CREDENTIAL_MISMATCH");
             }
 
             setUserProfile(profile);
         } catch (error: any) {
             console.error("Sign-in error:", error);
-            if (error.message === "NO_PROFILE") {
-                throw error; // Propagate to caller
+
+            if (error.message === "CREDENTIAL_MISMATCH") {
+                toast.error("ID and Email do not match our records.");
+                throw error;
             }
 
-            // If the user definitely doesn't exist (if detectable)
             if (error.code === "auth/user-not-found") {
+                toast.error("Account not found. Please register first.");
                 throw new Error("NO_ACCOUNT");
             } else if (error.code === "auth/invalid-credential") {
-                toast.error("Invalid ID Number or password.");
+                toast.error("Invalid credentials. Please check your ID and Password.");
             } else if (error.code === "auth/wrong-password") {
                 toast.error("Incorrect password.");
             } else if (error.code === "permission-denied" || error.message.includes("Missing or insufficient permissions")) {
@@ -123,35 +123,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } else {
                 toast.error("Sign-in failed. Please try again.");
             }
+            throw error;
         }
     };
 
     const registerWithEmail = async (data: RegisterData & { role: "admin" | "officer" }) => {
         try {
-            // 1. Check if ID Number already exists in Firestore (Optional/Resilient)
-            try {
-                const existingUser = await getUserByIdNumber(data.idNumber);
-                if (existingUser) {
-                    throw new Error(`The ID Number ${data.idNumber} is already registered.`);
-                }
-            } catch (err: any) {
-                // If it's a permission error, we proceed anyway as the rule might block unauthenticated queries
-                // The subsequent profile creation will still fail if there's a real security issue
-                if (err.message.includes("permission") || err.code === "permission-denied") {
-                    console.warn("Permission denied checking ID uniqueness, proceeding anyway...");
-                } else {
-                    throw err;
+            if (data.idNumber) {
+                try {
+                    const existingUser = await getUserByIdNumber(data.idNumber);
+                    if (existingUser) {
+                        throw new Error(`The ID Number ${data.idNumber} is already registered.`);
+                    }
+                } catch (err: any) {
+                    if (err.message.includes("permission") || err.code === "permission-denied") {
+                        console.warn("Permission denied checking ID uniqueness, proceeding anyway...");
+                    } else {
+                        throw err;
+                    }
                 }
             }
 
-            // 2. Create Auth User with actual email
-            const result = await createUserWithEmailAndPassword(auth, data.email, data.password);
+            const authEmail = data.idNumber ? `${data.idNumber.trim()}@checkits.local` : data.email;
+            const result = await createUserWithEmailAndPassword(auth, authEmail, data.password);
             const user = result.user;
 
-            // Update Firebase Auth display name
             await updateProfile(user, { displayName: data.fullName });
 
-            // 3. Create Firestore User
             await createUser(user.uid, {
                 email: data.email,
                 displayName: data.fullName,
@@ -159,30 +157,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 role: data.role,
             });
 
-            // 4. Update Profile Details
             await updateUserProfile(user.uid, {
-                idNumber: data.idNumber,
+                idNumber: data.idNumber || "",
                 position: data.position,
                 schoolYear: data.schoolYear,
                 isProfileComplete: true,
             });
 
-            // Sign out after registration so they can sign in
             await firebaseSignOut(auth);
             setFirebaseUser(null);
-            setUserProfile(null);
-
-            toast.success("Account created! Please sign in with your ID Number.");
+            const loginMsg = data.idNumber ? "ID Number" : "Email";
+            toast.success(`Account created! Please sign in with your ${loginMsg}.`);
         } catch (error: any) {
             if (error.code === "auth/email-already-in-use") {
-                toast.error("An account with this ID Number already exists.");
+                toast.error("An account with this email already exists.");
             } else if (error.code === "auth/weak-password") {
                 toast.error("Password must be at least 6 characters.");
             } else {
                 toast.error("Registration failed. Please try again.");
                 console.error(error);
             }
-            throw error; // Re-throw so the form doesn't redirect
+            throw error;
         }
     };
 
