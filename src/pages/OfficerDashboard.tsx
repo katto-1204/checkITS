@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { ScrollArea } from "@/components/ui/scroll-area";
 import QRCode from "react-qr-code";
 import QrScanner from "@/components/QrScanner";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import {
   getAttendanceForUser,
   getMeetings,
@@ -23,6 +23,9 @@ import {
 } from "@/lib/firestore";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import LeaderboardWidget from "@/components/LeaderboardWidget";
+import NextEventCountdown from "@/components/NextEventCountdown";
+import ActivityFeed from "@/components/ActivityFeed";
 
 const container = {
   hidden: { opacity: 0 },
@@ -272,213 +275,235 @@ const OfficerDashboard = () => {
 
   return (
     <DashboardLayout role="officer">
-      <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
+      <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 lg:grid-cols-4 gap-8 pb-10">
 
-        {/* Header Section */}
-        <motion.div variants={itemAnim} className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-black">Welcome, {userProfile?.displayName?.split(" ")[0]}!</h1>
-            <p className="text-muted-foreground">Here is your attendance overview</p>
-          </div>
-          <div className="flex gap-2">
-            {/* My QR Code */}
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="font-semibold">
-                  <QrCode size={16} className="mr-2" />
-                  My QR
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-sm">
-                <DialogHeader>
-                  <DialogTitle className="font-bold text-center">My Officer QR</DialogTitle>
-                </DialogHeader>
-                <div className="flex flex-col items-center gap-4 py-4">
-                  <div className="bg-white p-4 rounded-xl shadow-sm">
-                    <QRCode
-                      value={`checkits://officer/${userProfile?.uid}`}
-                      size={200}
-                    />
-                  </div>
-                  <p className="text-sm text-center text-muted-foreground">
-                    Show this to an admin to check in manually
-                  </p>
-                </div>
-              </DialogContent>
-            </Dialog>
+        {/* -------------------------------
+            LEFT COLUMN (Sidebar)
+            Leaderboard, Calendar, Badges
+           ------------------------------- */}
+        <motion.div variants={itemAnim} className="lg:col-span-1 space-y-6 order-2 lg:order-1">
+          {/* Leaderboard Widget */}
+          <LeaderboardWidget />
 
-            <Button onClick={() => setScannerOpen(true)} className="font-bold">
-              <ScanLine size={16} className="mr-2" />
-              Scan Meeting
-            </Button>
-          </div>
-        </motion.div>
-
-        {/* Top Badges & Stats Row */}
-        <motion.div variants={itemAnim} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Stats Cards */}
-          {stats.map((s) => (
-            <Card key={s.label} className="border-l-4 border-l-primary/50">
-              <CardContent className="p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{s.label}</p>
-                  <p className="text-2xl font-black">{s.value}</p>
-                </div>
-                <s.icon className={`opacity-80 ${s.color}`} size={24} />
-              </CardContent>
-            </Card>
-          ))}
-
-          {/* Featured Badge (Highest Earned) */}
-          <Card className="bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
-                <Trophy size={20} />
+          {/* Calendar Widget */}
+          <Card className="glass-card bg-black/20 backdrop-blur-md border-none">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                {format(now, "MMMM yyyy")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-7 gap-2 text-center mb-2">
+                {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+                  <span key={i} className="text-[10px] font-bold text-muted-foreground">{d}</span>
+                ))}
               </div>
-              <div>
-                <p className="text-xs text-primary font-bold uppercase">Current Rank</p>
-                <p className="text-lg font-black leading-tight">
-                  {badges.slice().reverse().find(b => presentCount >= b.threshold)?.name || "Rookie"}
-                </p>
+              <div className="grid grid-cols-7 gap-2 text-center">
+                {calDays.map((day, i) => {
+                  const isPresent = day && presentDays.includes(day);
+                  const isUpcoming = day && upcomingDays.includes(day);
+                  const isToday = day === today;
+
+                  return (
+                    <div
+                      key={i}
+                      className={`aspect-square flex items-center justify-center rounded-lg text-sm font-bold transition-all
+                        ${day === null ? "" :
+                          isToday ? "bg-primary text-primary-foreground shadow-lg shadow-primary/40 scale-110" :
+                            isPresent ? "bg-green-500 text-white shadow-md shadow-green-500/20" :
+                              isUpcoming ? "border-2 border-primary text-primary" :
+                                "text-muted-foreground/60 hover:bg-white/5 hover:text-foreground"
+                        }
+                      `}
+                    >
+                      {day}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Badges Collection */}
+          <Card className="glass-card bg-black/20 backdrop-blur-md border-none">
+            <CardHeader>
+              <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Badges Earned</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-3">
+                {badges.map(b => {
+                  const earned = presentCount >= b.threshold;
+                  return (
+                    <div key={b.name} className={`group flex flex-col items-center p-3 rounded-xl text-center transition-all ${earned ? "hover:bg-white/5 opacity-100" : "opacity-20 grayscale"}`}>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 shadow-lg transition-transform group-hover:scale-110 ${earned ? "bg-gradient-to-br from-yellow-400 to-amber-600 text-white" : "bg-white/10"}`}>
+                        <b.icon size={18} />
+                      </div>
+                      <span className="text-[10px] font-bold leading-tight uppercase tracking-wide">{b.name}</span>
+                    </div>
+                  )
+                })}
               </div>
             </CardContent>
           </Card>
         </motion.div>
 
-        {/* Main Content Split View */}
-        <motion.div variants={itemAnim} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* -------------------------------
+            RIGHT COLUMN (Main Content)
+            Hero, Stats (2x2), Agenda + Activity
+           ------------------------------- */}
+        <div className="lg:col-span-3 space-y-8 order-1 lg:order-2">
 
-          {/* Left Column: Events List */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <CalendarDays size={20} />
-                Your Events
-              </h2>
-            </div>
+          {/* 1. Hero / Welcome Section + Next Event Countdown */}
+          <motion.div variants={itemAnim} className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-4xl md:text-5xl font-black tracking-tight">
+                  Hi, <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-600">{userProfile?.displayName?.split(" ")[0]}</span>
+                </h1>
+                <p className="text-lg text-muted-foreground mt-2 font-medium">
+                  Ready to make an impact today?
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="h-12 px-6 rounded-full font-bold border-2 hover:bg-secondary/50">
+                      <QrCode size={18} className="mr-2" />
+                      My ID
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-sm backdrop-blur-xl bg-black/40 border-white/10">
+                    <DialogHeader>
+                      <DialogTitle className="font-bold text-center text-white">My Officer QR</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col items-center gap-8 py-10 px-4">
+                      <div className="bg-white p-8 rounded-3xl shadow-2xl shadow-primary/20">
+                        <QRCode
+                          value={`checkits://officer/${userProfile?.uid}`}
+                          size={240}
+                        />
+                      </div>
+                      <p className="text-base text-center text-white/80 font-medium">
+                        Show this to an admin to check in manually
+                      </p>
+                    </div>
+                  </DialogContent>
+                </Dialog>
 
-            <div className="space-y-3">
-              {sortedEvents.length === 0 ? (
-                <div className="text-center py-12 border-2 border-dashed rounded-xl">
-                  <p className="text-muted-foreground">No events found.</p>
-                </div>
-              ) : sortedEvents.map((event) => (
-                <motion.div
-                  key={event.id}
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  onClick={() => loadMeetingDetails(event)}
-                  className={`group relative overflow-hidden rounded-xl border p-4 cursor-pointer transition-all hover:shadow-md bg-card ${event.isPast ? "opacity-75" : "border-primary/50"
-                    }`}
+                <Button
+                  onClick={() => setScannerOpen(true)}
+                  className="h-12 px-8 rounded-full font-bold shadow-lg shadow-primary/25 bg-primary hover:bg-primary/90 transition-all hover:scale-105"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex gap-4">
-                      <div className={`shrink-0 w-12 h-12 rounded-lg flex flex-col items-center justify-center font-bold border ${event.isPast ? "bg-muted text-muted-foreground border-transparent" : "bg-primary/10 text-primary border-primary/20"
-                        }`}>
-                        <span className="text-[10px] uppercase leading-none">{format(new Date(event.date), "MMM")}</span>
-                        <span className="text-xl leading-none">{format(new Date(event.date), "d")}</span>
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-lg leading-tight group-hover:text-primary transition-colors">{event.title}</h3>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                          <span className="flex items-center gap-1"><Clock size={12} /> {event.time}</span>
-                          <span className="flex items-center gap-1"><MapPin size={12} /> {event.location}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-2">
-                      {event.status === "present" ? (
-                        <span className="bg-green-500/10 text-green-600 px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                          <CheckCircle2 size={12} /> Present
-                        </span>
-                      ) : event.status === "absent" ? (
-                        <span className="bg-red-500/10 text-red-600 px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                          <XCircle size={12} /> Absent
-                        </span>
-                      ) : (
-                        <span className="bg-secondary text-secondary-foreground px-2.5 py-1 rounded-full text-xs font-bold">
-                          Upcoming
-                        </span>
-                      )}
-                      <ChevronRight size={16} className="text-muted-foreground/50 group-hover:text-primary transition-colors" />
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  <ScanLine size={18} className="mr-2" />
+                  Scan Event
+                </Button>
+              </div>
             </div>
-          </div>
 
-          {/* Right Column: Calendar & Badges Widget */}
-          <div className="space-y-6">
-            {/* Calendar Widget */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                  {format(now, "MMMM yyyy")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                  {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
-                    <span key={i} className="text-[10px] font-bold text-muted-foreground">{d}</span>
-                  ))}
-                </div>
-                <div className="grid grid-cols-7 gap-1 text-center">
-                  {calDays.map((day, i) => {
-                    const isPresent = day && presentDays.includes(day);
-                    const isUpcoming = day && upcomingDays.includes(day);
-                    const isToday = day === today;
+            {/* Next Event Countdown */}
+            <NextEventCountdown meetings={meetings} />
+          </motion.div>
 
-                    return (
-                      <div
-                        key={i}
-                        className={`aspect-square flex items-center justify-center rounded-md text-sm font-medium
-                                            ${day === null ? "" :
-                            isToday ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25" :
-                              isPresent ? "bg-green-500 text-white shadow-sm" :
-                                isUpcoming ? "border border-primary text-primary" :
-                                  "text-muted-foreground hover:bg-secondary"
-                          }
-                                        `}
-                      >
-                        {day}
-                      </div>
-                    );
-                  })}
+          {/* 2. Stats Grid (2x2) */}
+          <motion.div variants={itemAnim} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {stats.map((s) => (
+              <Card key={s.label} className="glass-card border-l-4 border-l-primary/50 hover:bg-secondary/20 transition-colors">
+                <CardContent className="p-5 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">{s.label}</p>
+                    <p className="text-3xl font-black">{s.value}</p>
+                  </div>
+                  <div className={`p-3 rounded-xl bg-secondary/30 ${s.color}`}>
+                    <s.icon size={24} />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {/* Featured Badge (Current Rank) - 4th Item for 2x2 grid */}
+            <Card className="glass-card bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border-indigo-500/20">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                  <Trophy size={24} />
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2 text-[10px] text-muted-foreground justify-center">
-                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500" /> Present</span>
-                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full border border-primary" /> Upcoming</span>
-                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-primary" /> Today</span>
+                <div>
+                  <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mb-1">Current Rank</p>
+                  <p className="text-xl font-black leading-tight">
+                    {badges.slice().reverse().find(b => presentCount >= b.threshold)?.name || "Rookie"}
+                  </p>
                 </div>
               </CardContent>
             </Card>
+          </motion.div>
 
-            {/* Badges Collection */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Badges</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-2">
-                  {badges.map(b => {
-                    const earned = presentCount >= b.threshold;
-                    return (
-                      <div key={b.name} className={`flex flex-col items-center p-2 rounded-lg text-center transition-all ${earned ? "opacity-100" : "opacity-30 grayscale"}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${earned ? "bg-yellow-500/10 text-yellow-600" : "bg-secondary"}`}>
-                          <b.icon size={14} />
+          {/* 3. Agenda and Activity Feed (Side-by-Side) */}
+          <motion.div variants={itemAnim} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+            {/* Agenda Left */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-black flex items-center gap-3">
+                  <CalendarDays className="text-primary" size={24} />
+                  Your Agenda
+                </h2>
+              </div>
+
+              {/* Agenda List */}
+              <div className="space-y-4">
+                {sortedEvents.length === 0 ? (
+                  <div className="text-center py-16 border-2 border-dashed border-white/10 rounded-2xl bg-white/5">
+                    <p className="text-muted-foreground font-medium">No events found yet.</p>
+                  </div>
+                ) : sortedEvents.map((event) => (
+                  <motion.div
+                    key={event.id}
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => loadMeetingDetails(event)}
+                    className={`group relative overflow-hidden rounded-2xl border p-5 cursor-pointer transition-all shadow-sm hover:shadow-xl bg-card/50 backdrop-blur-sm ${event.isPast ? "opacity-60 grayscale hover:grayscale-0 hover:opacity-100" : "border-primary/30"
+                      }`}
+                  >
+                    <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                    <div className="flex flex-col h-full justify-between gap-4">
+                      <div className="flex justify-between items-start">
+                        <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center font-bold shadow-inner ${event.isPast ? "bg-secondary text-muted-foreground" : "bg-primary text-primary-foreground"}`}>
+                          <span className="text-[10px] uppercase leading-none opacity-80">{format(new Date(event.date), "MMM")}</span>
+                          <span className="text-2xl leading-none">{format(new Date(event.date), "d")}</span>
                         </div>
-                        <span className="text-[10px] font-bold leading-tight">{b.name}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
 
-        </motion.div>
+                        {event.status === "present" ? (
+                          <div className="bg-green-500 text-white p-1.5 rounded-full shadow-lg shadow-green-500/20">
+                            <CheckCircle2 size={16} />
+                          </div>
+                        ) : event.status === "absent" ? (
+                          <div className="bg-red-500 text-white p-1.5 rounded-full shadow-lg shadow-red-500/20">
+                            <XCircle size={16} />
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div>
+                        <h3 className="font-bold text-lg leading-snug line-clamp-2 group-hover:text-primary transition-colors">{event.title}</h3>
+                        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mt-3 font-medium">
+                          <span className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md"><Clock size={12} /> {event.time}</span>
+                          <span className="flex items-center gap-1.5 bg-secondary/50 px-2 py-1 rounded-md"><MapPin size={12} /> {event.location}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            {/* Activity Feed Right */}
+            <div>
+              <ActivityFeed attendance={attendance} meetings={meetings} />
+            </div>
+
+          </motion.div>
+
+        </div>
 
       </motion.div>
 
@@ -536,7 +561,7 @@ const OfficerDashboard = () => {
                   return (
                     <Button disabled className="bg-green-600/20 text-green-600 border border-green-600/50 cursor-not-allowed hover:bg-green-600/20">
                       <CheckCircle2 className="mr-2 h-4 w-4" />
-                      Alrady Registered
+                      Already Registered
                     </Button>
                   );
                 }

@@ -5,7 +5,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { getUserByIdNumber } from "@/lib/firestore";
 
 const Login = () => {
@@ -37,29 +37,38 @@ const Login = () => {
     try {
       let loginEmail = email;
 
-      // Check if input looks like an email
+      // 1. If using ID Number (no @), check Firestore first
       if (!email.includes("@")) {
         try {
-          // Attempt to find user by ID
-          // Note: This may fail if Firestore rules deny access to unauthenticated users
           const user = await getUserByIdNumber(email);
-          if (user) {
-            loginEmail = user.email;
-          } else {
-            // ID not found in cleartext query, proceed to try auth with constructed email
-            console.warn("ID lookup returned empty, proceeding with constructed email");
+
+          if (!user) {
+            // User does ONLY exist if they have a Firestore profile
+            // If checking by ID and no profile found -> Show "No Account" modal immediately
+            setNoAccountOpen(true);
+            setIsSigningIn(false);
+            return;
           }
-        } catch (idErr: any) {
-          console.warn("ID lookup failed or restricted:", idErr);
-          // If permission denied, we skip lookup and try direct login
-          // effectively assuming email = id@checkits.local
+
+          // User found, proceed to auth with their email
+          loginEmail = user.email;
+
+        } catch (idErr) {
+          // Check failed (likely network or permissions), might be risky to show "No Account" 
+          // but we'll fall through to normal auth as backup
+          console.warn("ID lookup failed:", idErr);
+          // Default construct email if lookup fails
+          loginEmail = `${email}@checkits.local`;
         }
       }
 
+      // 2. Attempt Sign In
+      // At this point, we either have a valid email from Firestore OR we are trying a direct email login
       await signInWithEmail(loginEmail, password);
+
     } catch (err: any) {
       console.error("Login flow caught error:", err);
-      // Errors are now handled by toasts in AuthContext
+      // AuthContext handles most toasts, but we can verify if simple retry needed
     } finally {
       setIsSigningIn(false);
     }
@@ -131,11 +140,11 @@ const Login = () => {
           {/* ID Number + Password Form */}
           <form onSubmit={handleEmailLogin} className="space-y-4 mb-5">
             <div className="space-y-2">
-              <Label htmlFor="email">{isAdminLogin ? "Username / Email" : "ID Number / Email"}</Label>
+              <Label htmlFor="email">{isAdminLogin ? "Username" : "ID Number"}</Label>
               <Input
                 id="email"
                 type="text"
-                placeholder={isAdminLogin ? "admin" : "59800000"}
+                placeholder={isAdminLogin ? "admin" : "e.g. 59800000"}
                 value={email}
                 onChange={(e) => setEmail(e.target.value.trim())}
                 className="bg-secondary border-border"
@@ -205,7 +214,7 @@ const Login = () => {
           </Button>
 
           <p className="text-xs text-muted-foreground text-center mt-4">
-            Log in with your ID Number or Google (@hcdc.edu.ph).
+            Log in with your <span className="font-bold">ID Number</span> or <span className="font-bold">School Email</span>.
           </p>
 
           {/* Create Account Link */}

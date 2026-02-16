@@ -15,7 +15,7 @@ import QrScanner from "@/components/QrScanner";
 import AttendanceChart from "@/components/AttendanceChart";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import {
   getMeetings,
   getAttendanceForMeeting,

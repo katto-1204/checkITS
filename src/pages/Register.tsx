@@ -12,7 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const CATEGORIES = ["Executive", "Creatives", "Logistics"] as const;
@@ -59,45 +59,57 @@ const Register = () => {
     const { registerWithEmail } = useAuth();
 
     const [role, setRole] = useState<"admin" | "officer">("officer");
-    const [fullName, setFullName] = useState("");
-    const [idNumber, setIdNumber] = useState("");
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [category, setCategory] = useState("");
-    const [position, setPosition] = useState("");
-    const [schoolYear, setSchoolYear] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
+    const [formData, setFormData] = useState({
+        fullName: "",
+        email: "",
+        idNumber: "",
+        position: "",
+        schoolYear: `${currentYear}-${currentYear + 1}`, // Default to current school year
+        password: "",
+        confirmPassword: "",
+    });
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
 
     const availablePositions = category ? POSITIONS[category] || [] : [];
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
 
-        if (password !== confirmPassword) {
+        if (formData.password !== formData.confirmPassword) {
             setError("Passwords do not match.");
             return;
         }
 
-        if (password.length < 6) {
+        if (formData.password.length < 6) {
             setError("Password must be at least 6 characters.");
             return;
         }
 
+        if (!formData.email.endsWith("@hcdc.edu.ph")) {
+            setError("Please use your @hcdc.edu.ph institutional email.");
+            return;
+        }
+
         // Only require category/position if role is officer
-        if (role === "officer" && (!category || !position)) {
+        if (role === "officer" && (!category || !formData.position)) {
             setError("Please select your category and position.");
             return;
         }
 
-        if (!schoolYear) {
+        if (!formData.schoolYear) {
             setError("Please select a school year.");
             return;
         }
 
-        if (!idNumber.startsWith("598")) {
+        if (!formData.idNumber.startsWith("598")) {
             setError("ID Number must start with '598'.");
             return;
         }
@@ -105,12 +117,12 @@ const Register = () => {
         setIsLoading(true);
         try {
             await registerWithEmail({
-                fullName,
-                idNumber,
-                password,
-                category: role === "officer" ? category : "",
-                position: role === "officer" ? position : "",
-                schoolYear,
+                fullName: formData.fullName,
+                email: formData.email,
+                idNumber: formData.idNumber,
+                password: formData.password,
+                position: role === "officer" ? formData.position : "Administrator",
+                schoolYear: formData.schoolYear,
                 role,
             });
             navigate("/login");
@@ -172,7 +184,7 @@ const Register = () => {
                         </motion.div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={handleRegister} className="space-y-4">
                         {/* Role Selection */}
                         <div className="space-y-3 p-4 bg-secondary/30 rounded-lg border border-border/50">
                             <Label className="text-base font-semibold flex items-center gap-2">
@@ -196,51 +208,64 @@ const Register = () => {
                             </RadioGroup>
                         </div>
 
-                        {/* Full Name */}
                         <div className="space-y-2">
                             <Label htmlFor="fullName">Full Name</Label>
                             <Input
                                 id="fullName"
-                                placeholder="Juan Dela Cruz"
-                                value={fullName}
-                                onChange={(e) => setFullName(e.target.value)}
+                                name="fullName"
+                                placeholder="e.g. Juan De La Cruz"
+                                value={formData.fullName}
+                                onChange={handleChange}
                                 className="bg-secondary border-border"
                                 required
                             />
                         </div>
 
-                        {/* ID Number */}
-                        <div className="space-y-2">
-                            <Label htmlFor="idNumber">ID Number</Label>
-                            <Input
-                                id="idNumber"
-                                placeholder="598000000"
-                                value={idNumber}
-                                onChange={(e) => setIdNumber(e.target.value.trim())}
-                                className="bg-secondary border-border"
-                                required
-                            />
-                            <p className="text-xs text-muted-foreground">This will be used as your login ID.</p>
-                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="idNumber">ID Number</Label>
+                                <Input
+                                    id="idNumber"
+                                    name="idNumber"
+                                    placeholder="e.g. 59800000"
+                                    value={formData.idNumber}
+                                    onChange={handleChange}
+                                    className="bg-secondary border-border"
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="email">School Email</Label>
+                                <Input
+                                    id="email"
+                                    name="email"
+                                    type="email"
+                                    placeholder="e.g. your.name@hcdc.edu.ph"
+                                    value={formData.email}
+                                    onChange={handleChange}
+                                    className="bg-secondary border-border"
+                                    required
+                                />
+                            </div>
 
-                        {/* Password */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* Password */}
                             <div className="space-y-2">
                                 <Label htmlFor="password">Password</Label>
                                 <div className="relative">
                                     <Input
                                         id="password"
+                                        name="password"
                                         type={showPassword ? "text" : "password"}
-                                        placeholder="••••••••"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="Min. 6 characters"
+                                        value={formData.password}
+                                        onChange={handleChange}
                                         className="bg-secondary border-border pr-10"
                                         required
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                                     >
                                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                                     </button>
@@ -250,38 +275,39 @@ const Register = () => {
                                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                                 <Input
                                     id="confirmPassword"
-                                    type={showPassword ? "text" : "password"}
-                                    placeholder="••••••••"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    name="confirmPassword"
+                                    type="password"
+                                    placeholder="Re-enter password"
+                                    value={formData.confirmPassword}
+                                    onChange={handleChange}
                                     className="bg-secondary border-border"
                                     required
                                 />
                             </div>
                         </div>
 
-                        {/* Category + Position (Conditional for Officers) */}
                         {role === "officer" && (
                             <motion.div
                                 initial={{ opacity: 0, height: 0 }}
                                 animate={{ opacity: 1, height: "auto" }}
                                 exit={{ opacity: 0, height: 0 }}
-                                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                                className="grid grid-cols-1 md:grid-cols-2 gap-4"
                             >
                                 <div className="space-y-2">
-                                    <Label>Officer Category</Label>
+                                    <Label>Position Category</Label>
                                     <Select
                                         value={category}
                                         onValueChange={(val) => {
                                             setCategory(val);
-                                            setPosition(""); // Reset position when category changes
+                                            // Reset position when category changes
+                                            setFormData(prev => ({ ...prev, position: "" }));
                                         }}
                                     >
                                         <SelectTrigger className="bg-secondary border-border">
-                                            <SelectValue placeholder="Select category" />
+                                            <SelectValue placeholder="Select Category" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {CATEGORIES.map((cat) => (
+                                            {Object.keys(POSITIONS).map((cat) => (
                                                 <SelectItem key={cat} value={cat}>
                                                     {cat}
                                                 </SelectItem>
@@ -291,10 +317,14 @@ const Register = () => {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Position</Label>
-                                    <Select value={position} onValueChange={setPosition} disabled={!category}>
+                                    <Label>Specific Position</Label>
+                                    <Select
+                                        value={formData.position}
+                                        onValueChange={(val) => setFormData(prev => ({ ...prev, position: val }))}
+                                        disabled={!category}
+                                    >
                                         <SelectTrigger className="bg-secondary border-border">
-                                            <SelectValue placeholder={category ? "Select position" : "Select category first"} />
+                                            <SelectValue placeholder="Select Position" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {availablePositions.map((pos) => (
@@ -308,12 +338,14 @@ const Register = () => {
                             </motion.div>
                         )}
 
-                        {/* School Year */}
                         <div className="space-y-2">
                             <Label>School Year</Label>
-                            <Select value={schoolYear} onValueChange={setSchoolYear}>
+                            <Select
+                                value={formData.schoolYear}
+                                onValueChange={(val) => setFormData(prev => ({ ...prev, schoolYear: val }))}
+                            >
                                 <SelectTrigger className="bg-secondary border-border">
-                                    <SelectValue placeholder="Select school year" />
+                                    <SelectValue placeholder="Select School Year" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {SCHOOL_YEARS.map((sy) => (

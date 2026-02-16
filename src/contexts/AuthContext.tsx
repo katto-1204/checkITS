@@ -15,37 +15,9 @@ import {
     onAuthStateChanged,
 } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
-import { createUser, getUser, isFirstUser, UserProfile, updateUserProfile } from "@/lib/firestore";
+import { createUser, getUser, isFirstUser, UserProfile, updateUserProfile, getUserByIdNumber } from "@/lib/firestore";
 import { toast } from "sonner";
-
-interface RegisterData {
-    fullName: string;
-    // email: string; // Removed, using idNumber
-    password: string;
-    idNumber: string;
-    category: string;
-    position: string;
-    schoolYear: string;
-}
-
-interface AuthContextValue {
-    firebaseUser: User | null;
-    userProfile: UserProfile | null;
-    loading: boolean;
-    signInWithGoogle: () => Promise<void>;
-    signInWithEmail: (email: string, password: string) => Promise<void>;
-    registerWithEmail: (data: RegisterData & { role: "admin" | "officer" }) => Promise<void>;
-    signOut: () => Promise<void>;
-    refreshProfile: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
-
-export function useAuth() {
-    const ctx = useContext(AuthContext);
-    if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-    return ctx;
-}
+import { AuthContext, AuthContextValue, RegisterData } from "@/hooks/useAuth";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
@@ -156,28 +128,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const registerWithEmail = async (data: RegisterData & { role: "admin" | "officer" }) => {
         try {
-            // Use ID number to generate a unique email for auth
-            // This allows us to use Firebase Auth without requiring real emails
-            const email = `${data.idNumber}@checkits.local`;
+            // 1. Check if ID Number already exists in Firestore (Optional/Resilient)
+            try {
+                const existingUser = await getUserByIdNumber(data.idNumber);
+                if (existingUser) {
+                    throw new Error(`The ID Number ${data.idNumber} is already registered.`);
+                }
+            } catch (err: any) {
+                // If it's a permission error, we proceed anyway as the rule might block unauthenticated queries
+                // The subsequent profile creation will still fail if there's a real security issue
+                if (err.message.includes("permission") || err.code === "permission-denied") {
+                    console.warn("Permission denied checking ID uniqueness, proceeding anyway...");
+                } else {
+                    throw err;
+                }
+            }
 
-            const result = await createUserWithEmailAndPassword(auth, email, data.password);
+            // 2. Create Auth User with actual email
+            const result = await createUserWithEmailAndPassword(auth, data.email, data.password);
             const user = result.user;
 
             // Update Firebase Auth display name
             await updateProfile(user, { displayName: data.fullName });
 
-            // Create Firestore user doc
+            // 3. Create Firestore User
             await createUser(user.uid, {
-                email: email,
+                email: data.email,
                 displayName: data.fullName,
                 photoURL: "",
-                role: data.role, // Use selected role
+                role: data.role,
             });
 
-            // Update with extra fields
+            // 4. Update Profile Details
             await updateUserProfile(user.uid, {
                 idNumber: data.idNumber,
-                position: data.role === "admin" ? "Administrator" : `${data.category} - ${data.position}`,
+                position: data.position,
                 schoolYear: data.schoolYear,
                 isProfileComplete: true,
             });

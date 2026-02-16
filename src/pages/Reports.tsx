@@ -242,7 +242,7 @@ const Reports = () => {
               <CardContent className="p-0">
                 <div className="divide-y divide-border">
                   {officerStats.map((o, i) => (
-                    <div key={o.name} className="flex items-center justify-between px-6 py-3">
+                    <div key={`${o.name}-${i}`} className="flex items-center justify-between px-6 py-3">
                       <div className="flex items-center gap-3">
                         <span className="text-xs font-bold text-muted-foreground w-6">{i + 1}</span>
                         <span className="font-medium text-sm">{o.name}</span>
@@ -251,10 +251,10 @@ const Reports = () => {
                         <span className="text-xs text-muted-foreground">{o.events} events</span>
                         <span
                           className={`text-sm font-bold ${o.rate >= 80
-                              ? "text-success"
-                              : o.rate >= 50
-                                ? "text-warning"
-                                : "text-destructive"
+                            ? "text-success"
+                            : o.rate >= 50
+                              ? "text-warning"
+                              : "text-destructive"
                             }`}
                         >
                           {o.rate}%

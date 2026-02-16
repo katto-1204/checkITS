@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import QrScanner from "@/components/QrScanner";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import {
   getMeeting,
   getAttendanceForMeeting,

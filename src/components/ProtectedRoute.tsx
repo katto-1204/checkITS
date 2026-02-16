@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ProtectedRouteProps {
     children: ReactNode;
@@ -19,11 +19,6 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
     }
 
     if (!firebaseUser || !userProfile) {
-        return <Navigate to="/login" replace />;
-    }
-
-    // If profile is incomplete, let them stay — the Login page shows the modal
-    if (!userProfile.isProfileComplete) {
         return <Navigate to="/login" replace />;
     }
 
